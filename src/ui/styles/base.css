@@ -60,6 +60,11 @@ body {
   outline: none;
 }
 
+/* Main landmark: transparent to layout, required for S-09 landmark structure. */
+#game-main {
+  display: contents;
+}
+
 /* Canvas: fills the viewport. */
 #game-canvas {
   display: block;
