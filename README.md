@@ -1,12 +1,21 @@
 # Sophie's Escape: The Witch's Castle
 
-A first-person browser 3D puzzle adventure. Sophie is trapped in an atmospheric witch's castle. To escape, she explores ten interconnected rooms, collects items, solves inventory-based puzzles, and pieces together the path to freedom — all while the witch watches from her crystal ball.
+Sophie is trapped in an ancient witch's castle. To escape, she explores ten interconnected rooms, collects items, solves puzzles, and pieces together the path to freedom. The witch watches from her crystal ball. There are no lives, no death, no failure states. The game is about exploring, thinking, and escaping.
 
-There are no lives, no death, no failure states. The experience is about solving, exploring, and escaping.
+Designed and built by Tim Dixon and Sophie.
 
 ## Status
 
-In setup. The repository was created on 2026-05-23. The design brief is at `docs/design-brief.md`. The project wiki is being scaffolded; architecture decisions, the 3D engine pick, and the visual design land in the next phase.
+v0.1 scaffold is live on the `feat/v0.1-scaffold` branch, open as a draft pull request. Tim can run the Vite development server locally and see the Three.js scene initialise with the Dungeon Cell room, the ambient torch light, and all overlay shells (inventory, hints, pause, main menu). Unit tests pass.
+
+The three-D engine is Three.js (see `docs/decisions/001-3d-engine-choice.md`). To run the game locally:
+
+```
+npm install
+npm run dev
+```
+
+Then open `http://localhost:5173/sophies-escape-witchs-castle/` in a browser.
 
 ## Target audience
 
@@ -14,28 +23,62 @@ Ages nine and up, family friendly. Estimated play time thirty to sixty minutes.
 
 ## Technology
 
-Browser-based, fully client-side. No server, no upload, no accounts. The 3D engine pick (Three.js or Babylon.js) is recorded as an architecture decision in the project wiki at `docs/decisions/`. Audio is sourced from the BBC Sound Effects Library at `bbcrewind.co.uk/sound-effects`.
+Browser-based, fully client-side. No server, no login, no installation. The game loads in a browser tab and plays from there.
+
+The 3D engine is Three.js, chosen for its smaller bundle size and mobile performance (see `docs/decisions/001-3d-engine-choice.md`). Audio is managed by Howler.js and sourced entirely from the BBC Sound Effects Library at bbcrewind.co.uk/sound-effects. The full tech stack is in `docs/coding-standards.md`.
 
 ## Accessibility
 
-This project targets the Web Content Accessibility Guidelines (WCAG) 2.2 at AAA conformance. The brief commits to: full keyboard navigation everywhere; touchscreen parity; large touch targets; strong contrast; visual cues alongside every audio event; a three-step hint system; and a pause that preserves state. The project's interpretation of AAA lives at `docs/accessibility.md`.
+This game targets the Web Content Accessibility Guidelines (WCAG) 2.2 at AAA conformance.
+
+In practice that means:
+
+- Every action is doable by keyboard alone. No pointer required.
+- Every action is doable by touchscreen alone. Both are equally complete, not just "also supported".
+- All on-screen text and interactive elements meet at least a 7:1 colour contrast ratio.
+- All touch targets are at least 44 by 44 CSS pixels.
+- All animations and transitions respect the operating system's reduced-motion preference.
+- Every audio event has a visual counterpart, so the game is playable without sound.
+- A three-step hint system is always available, with no cost or penalty for using it.
+- The witch encounters can be skipped.
+- The game can be paused at any moment and resumed from exactly where you left off.
+
+The project's accessibility notes and any documented exceptions are at `docs/accessibility.md`.
 
 ## How to play
 
-Once the first playable build lands, this section will name the entry point and the controls. For now, the controls reference is in section 9 of `docs/design-brief.md`.
+Once the first playable build is live, this section will describe how to load the game and walk through the controls. Until then, the full controls reference is in section 9 of `docs/design-brief.md`.
+
+The short version: W/S to move, A/D to look, E to interact, I for inventory, H for hints, Escape to pause.
+
+## The ten rooms
+
+Sophie moves through ten rooms in the witch's castle:
+
+1. The Dungeon Cell. The starting room. Find your way out.
+2. The Stone Corridor. Atmospheric. A hidden item waits.
+3. The Kitchen. Cauldron, shelves, an ingredient puzzle.
+4. The Library. Books, a locked cabinet, a riddle.
+5. The Great Hall. Portraits, a fireplace, a multi-item puzzle.
+6. The Chapel. Stained glass, an altar, a symbol puzzle.
+7. The Armoury. Chests, a lock and key.
+8. The Tower Room. A telescope, a star map, an observational puzzle.
+9. The Witch's Study. The most atmospheric room. A complex multi-item puzzle.
+10. The Castle Gate. Every previous solution comes together. Escape.
 
 ## Licence
 
-To be confirmed. Tim Dixon's other projects use the MIT Licence; this project will likely follow the same pattern once the dependencies have been audited (Three.js / Babylon.js, Howler.js, BBC SFX terms).
+Source code: MIT Licence (pending Tim's confirmation; see `docs/decisions/` once confirmed). The BBC Sound Effects Library audio is used under the BBC's non-commercial terms and is not covered by the source code licence. Attribution for each audio file is in the game's Credits screen and in `docs/requirements.md`.
 
 ## Project wiki
 
-- `docs/index.md`: catalogue of every project-wiki page.
 - `docs/design-brief.md`: the original game design brief (version 1.0, 2026-05-23).
+- `docs/requirements.md`: the full requirements specification, derived from the design brief.
+- `docs/index.md`: catalogue of every project-wiki page.
 - `docs/log.md`: chronological, append-only operations log for the project.
-- `docs/glossary.md`: project-specific terms.
-- `docs/accessibility.md`: the project's WCAG 2.2 AAA interpretation.
+- `docs/glossary.md`: domain terms for this project.
+- `docs/accessibility.md`: the project's WCAG 2.2 AAA notes.
 - `docs/coding-standards.md`: project-specific coding standards.
 - `docs/decisions/`: architecture decision records.
-- `docs/exceptions/`: any accessibility or security exceptions, with rationale.
+- `docs/exceptions/`: any documented accessibility or security exceptions.
 - `docs/patterns/`: project-specific reusable patterns.
