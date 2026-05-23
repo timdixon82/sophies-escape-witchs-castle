@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!--
+      Content Security Policy (ADR 007).
+      'wasm-unsafe-eval' is present from day one — it is required for Three.js
+      WebAssembly modules and avoids the painful retrofit ICCC had in Q67.
+      'unsafe-inline' on style-src is a tracked interim relaxation; it will be
+      removed before the 1.0 release once Sean's CSS audit is complete.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; connect-src 'self' https://timdixon82.goatcounter.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests;" />
+
+    <!-- Referrer policy — delivered as meta because GitHub Pages cannot send headers. -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <title>Sophie's Escape: The Witch's Castle</title>
+    <meta name="description" content="Sophie is trapped in an ancient witch's castle. Explore ten interconnected rooms, collect items, solve puzzles, and escape — if you can." />
+
+    <link rel="icon" type="image/svg+xml" href="/sophies-escape-witchs-castle/favicon.svg" />
+    <link rel="stylesheet" href="/src/ui/styles/tokens.css" />
+    <link rel="stylesheet" href="/src/ui/styles/base.css" />
+    <link rel="stylesheet" href="/src/ui/styles/overlays.css" />
+  </head>
+  <body>
+    <!-- Loading screen — visible until the game initialises. -->
+    <div
+      id="loading-screen"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading Sophie's Escape"
+    >
+      <h1 class="game-title">Sophie's Escape: The Witch's Castle</h1>
+      <p id="loading-text">Loading — please wait.</p>
+      <div
+        id="loading-bar"
+        role="progressbar"
+        aria-valuenow="0"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-label="Loading progress"
+      >
+        <div id="loading-bar-fill"></div>
+      </div>
+    </div>
+
+    <!-- 3D canvas — the Three.js renderer writes into this element.
+         role="application" + aria-label let screen readers know this is an
+         interactive application area. ARIA live region narrates game state.
+         Canvas screen-reader exception SE-001 is documented in docs/accessibility.md. -->
+    <canvas
+      id="game-canvas"
+      role="application"
+      aria-label="Sophie's Escape game view. Use keyboard controls or on-screen buttons to play."
+      tabindex="0"
+      hidden
+    ></canvas>
+
+    <!-- ARIA live region for game state announcements.
+         Announces: room entries, item pickups, puzzle state changes, witch encounters.
+         Polite: does not interrupt ongoing speech. -->
+    <div
+      id="game-announcer"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      class="sr-only"
+    ></div>
+
+    <!-- Permanent HUD buttons — visible during gameplay, hidden at menus/loading. -->
+    <div id="hud" hidden>
+      <!-- Inventory toggle: bottom-right desktop, bottom-centre mobile. -->
+      <button
+        type="button"
+        id="hud-inventory-btn"
+        aria-label="Open inventory"
+        aria-expanded="false"
+        aria-controls="overlay-inventory"
+        class="hud-btn"
+      >
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <path d="M16 10a4 4 0 0 1-8 0"/>
+        </svg>
+        <span class="hud-btn-label">Inventory</span>
+      </button>
+
+      <!-- Hint button. -->
+      <button
+        type="button"
+        id="hud-hint-btn"
+        aria-label="Show hint"
+        aria-controls="overlay-hint"
+        class="hud-btn"
+      >
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span class="hud-btn-label">Hint</span>
+      </button>
+
+      <!-- Pause button. -->
+      <button
+        type="button"
+        id="hud-pause-btn"
+        aria-label="Pause game"
+        aria-controls="overlay-pause"
+        class="hud-btn"
+      >
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="6" y="4" width="4" height="16"/>
+          <rect x="14" y="4" width="4" height="16"/>
+        </svg>
+        <span class="hud-btn-label">Pause</span>
+      </button>
+    </div>
+
+    <!-- Touch joystick (shown only on touch devices during gameplay). -->
+    <div id="touch-joystick-area" hidden aria-hidden="true">
+      <div id="touch-joystick-base">
+        <div id="touch-joystick-knob"></div>
+      </div>
+    </div>
+
+    <!-- ================================================================
+         OVERLAY SHELLS
+         Each overlay is a <dialog> with role="dialog", aria-modal="true",
+         and aria-labelledby pointing to its heading.
+         Focus management is handled by src/ui/overlay-controller.js.
+         ================================================================ -->
+
+    <!-- Main menu overlay -->
+    <dialog
+      id="overlay-main-menu"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="main-menu-heading"
+    >
+      <div class="overlay-inner">
+        <h1 id="main-menu-heading" class="overlay-title">Sophie's Escape: The Witch's Castle</h1>
+        <p class="overlay-subtitle">A first-person puzzle adventure</p>
+        <nav aria-label="Main menu">
+          <ul class="menu-list">
+            <li>
+              <button type="button" id="btn-new-game" class="menu-btn menu-btn-primary">
+                New Game
+              </button>
+            </li>
+          </ul>
+        </nav>
+        <footer class="menu-footer">
+          <p class="menu-footer-text">
+            Privacy: this game uses
+            <a
+              href="https://www.goatcounter.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >GoatCounter</a>
+            (cookieless analytics). No personal data is stored.
+          </p>
+        </footer>
+      </div>
+    </dialog>
+
+    <!-- Inventory overlay -->
+    <dialog
+      id="overlay-inventory"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="inventory-heading"
+    >
+      <div class="overlay-inner">
+        <div class="overlay-header">
+          <h2 id="inventory-heading" class="overlay-title">Inventory</h2>
+          <button
+            type="button"
+            class="overlay-close-btn"
+            aria-label="Close inventory"
+            data-overlay-close="overlay-inventory"
+          >
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Item grid. Populated by src/ui/inventory-panel.js. -->
+        <div id="inventory-grid" class="inventory-grid" role="list" aria-label="Collected items">
+          <p id="inventory-empty-msg" class="inventory-empty">
+            You have not found any items yet.
+          </p>
+        </div>
+
+        <!-- Combine button — enabled only when two or more items are selected. -->
+        <div class="inventory-actions">
+          <button
+            type="button"
+            id="btn-combine"
+            class="action-btn"
+            disabled
+            aria-label="Combine selected items"
+          >
+            Combine
+          </button>
+        </div>
+
+        <!-- Live region for combination results. -->
+        <div
+          id="inventory-feedback"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          class="inventory-feedback"
+        ></div>
+      </div>
+    </dialog>
+
+    <!-- Hint overlay -->
+    <dialog
+      id="overlay-hint"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="hint-heading"
+    >
+      <div class="overlay-inner">
+        <div class="overlay-header">
+          <h2 id="hint-heading" class="overlay-title">Hint for this puzzle</h2>
+          <button
+            type="button"
+            class="overlay-close-btn"
+            aria-label="Close hint"
+            data-overlay-close="overlay-hint"
+          >
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Hint step annotation (e.g. "Hint 1 of 3"). -->
+        <p id="hint-step-label" class="hint-step-label" aria-live="polite"></p>
+
+        <!-- Hint text container — steps revealed progressively. -->
+        <div id="hint-text-container" class="hint-text-container">
+          <p id="hint-text" class="hint-text">No hints available in this room yet.</p>
+        </div>
+
+        <!-- Live region for new hint text announcements. -->
+        <div
+          id="hint-announcer"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          class="sr-only"
+        ></div>
+
+        <!-- Show next hint button — hidden after all hints revealed. -->
+        <div class="hint-actions">
+          <button
+            type="button"
+            id="btn-show-next-hint"
+            class="action-btn"
+            hidden
+            aria-label="Show next hint"
+          >
+            Show next hint
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Pause overlay -->
+    <dialog
+      id="overlay-pause"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pause-heading"
+    >
+      <div class="overlay-inner overlay-inner--centered">
+        <h2 id="pause-heading" class="overlay-title">Game Paused</h2>
+        <nav aria-label="Pause menu">
+          <ul class="menu-list">
+            <li>
+              <button
+                type="button"
+                id="btn-resume"
+                class="menu-btn menu-btn-primary"
+                aria-label="Resume game"
+              >
+                Resume
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                id="btn-pause-hint"
+                class="menu-btn"
+                aria-label="Show hint for current puzzle"
+              >
+                Hint
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                id="btn-quit-to-menu"
+                class="menu-btn"
+                aria-label="Exit to main menu"
+              >
+                Exit to Main Menu
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </dialog>
+
+    <!-- Entry point -->
+    <script type="module" src="/src/main.js"></script>
+
+    <!-- Service worker registration — runs after first paint so it does not
+         delay the visible main menu (ADR 008). -->
+    <script type="module">
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sophies-escape-witchs-castle/sw.js')
+            .catch(() => {
+              // SW registration failure is non-fatal. Game works without it.
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
