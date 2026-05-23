@@ -123,7 +123,23 @@ function _open(overlayId, triggerElementId) {
   }
 
   // Open the dialog.
-  if (!dialog.open) dialog.showModal();
+  // Guard showModal(): it is not available on iOS Safari 15.3 and below.
+  // On those browsers, fall back to the attribute-based open pattern.
+  if (!dialog.open) {
+    if (typeof dialog.showModal === 'function') {
+      try {
+        dialog.showModal();
+      } catch (err) {
+        // showModal can throw if the element is not connected or is already
+        // in the top layer. Fall through to the attribute fallback.
+        dialog.setAttribute('open', '');
+      }
+    } else {
+      // Fallback for browsers without native <dialog> support.
+      dialog.setAttribute('open', '');
+      dialog.style.display = '';
+    }
+  }
   _openStack.push(overlayId);
 
   // Move focus inside the overlay.
@@ -139,7 +155,18 @@ function _close(overlayId) {
   );
   if (!dialog || !dialog.open) return;
 
-  dialog.close();
+  // Guard dialog.close() the same way as showModal().
+  if (typeof dialog.close === 'function') {
+    try {
+      dialog.close();
+    } catch {
+      dialog.removeAttribute('open');
+      dialog.style.display = 'none';
+    }
+  } else {
+    dialog.removeAttribute('open');
+    dialog.style.display = 'none';
+  }
   const idx = _openStack.indexOf(overlayId);
   if (idx !== -1) _openStack.splice(idx, 1);
 

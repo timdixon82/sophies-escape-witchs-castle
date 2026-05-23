@@ -43,30 +43,46 @@ const TOKEN_FG_PRIMARY = 0xf0eae0; // #f0eae0 — ambient light tint (warm off-w
 
 /**
  * Initialises the Three.js renderer and attaches it to the canvas element.
+ *
+ * iOS Safari note: the canvas is hidden during boot (display:none equivalent
+ * because of the HTML `hidden` attribute), so clientWidth/clientHeight are 0.
+ * We fall back to window.innerWidth/innerHeight so the WebGL context is
+ * created with a valid non-zero size. The ResizeObserver fires once the
+ * canvas becomes visible and corrects the dimensions.
+ *
  * @param {HTMLCanvasElement} canvas
  * @returns {void}
+ * @throws {Error} if WebGL context creation fails (caught by boot() in main.js)
  */
 export function initEngine(canvas) {
+  // Resolve viewport dimensions. A hidden canvas reports clientWidth=0;
+  // fall back to the window viewport so Three.js gets a non-zero size.
+  const initialW = canvas.clientWidth || window.innerWidth || 320;
+  const initialH = canvas.clientHeight || window.innerHeight || 568;
+
   // WebGL renderer — uses the provided canvas element.
+  // No try/catch here: let the error propagate to boot() in main.js so the
+  // global error handler can surface it on the loading screen.
   _renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
     powerPreference: 'default',
   });
   _renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  _renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  _renderer.setSize(initialW, initialH);
 
   // clearColor matches --bg-canvas: #0a0a0a, full opacity.
   _renderer.setClearColor(TOKEN_BG_CANVAS, 1);
 
-  // Handle resize.
+  // Handle resize. ResizeObserver fires when the canvas becomes visible.
   const resizeObserver = new ResizeObserver(() => _onResize(canvas));
   resizeObserver.observe(canvas);
 
   // Camera — 75° FoV, aspect set on resize, near 0.1m, far 100m.
+  // Use the same fallback dimensions so aspect is never NaN.
   _camera = new THREE.PerspectiveCamera(
     75,
-    canvas.clientWidth / canvas.clientHeight,
+    initialW / initialH,
     0.1,
     100
   );
