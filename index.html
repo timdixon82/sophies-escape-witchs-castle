@@ -435,7 +435,8 @@
     </script>
 
     <!-- Entry point -->
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/main.js"
+      onerror="var _d=document.getElementById('boot-diagnostic');if(_d){_d.style.display='block';var _p=document.createElement('p');_p.style.color='#ffcccc';_p.textContent='Error: module script failed to load ('+this.src+'). Check the network tab or your connection.';_d.appendChild(_p);}var _lt=document.getElementById('loading-text');if(_lt){_lt.textContent='The game failed to load. See the error details below.';}var _ls=document.getElementById('loading-screen');if(_ls){_ls.hidden=false;}"></script>
 
     <!-- Service worker registration — runs after first paint so it does not
          delay the visible main menu (ADR 008). -->
