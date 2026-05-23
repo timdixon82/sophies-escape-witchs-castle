@@ -1,0 +1,25 @@
+{
+  "name": "sophies-escape-witchs-castle",
+  "version": "0.1.0",
+  "description": "Sophie's Escape: The Witch's Castle — a first-person browser 3D puzzle adventure.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5173",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . && stylelint 'src/**/*.css'",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "eslint": "8.57.0",
+    "stylelint": "16.6.1",
+    "stylelint-config-standard": "36.0.1",
+    "vite": "5.3.1",
+    "vitest": "1.6.1"
+  },
+  "dependencies": {
+    "howler": "2.2.4",
+    "three": "0.165.0"
+  }
+}
