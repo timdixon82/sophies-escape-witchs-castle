@@ -54,6 +54,26 @@ function _showBootError(message) {
   }
 }
 
+/**
+ * Appends a named boot step to the diagnostic panel so Tim can see exactly
+ * where the boot sequence reached on his iPhone, even without developer tools.
+ * Each call also logs to the browser console.
+ * This helper is lightweight: it only touches the DOM and console; it does not
+ * alter game state or control flow.
+ * @param {string} step - Short description of the step just completed.
+ */
+function _logStep(step) {
+  console.log('[boot]', step);
+  const diagEl = document.getElementById('boot-diagnostic');
+  if (diagEl) {
+    diagEl.style.display = 'block';
+    const line = document.createElement('p');
+    line.style.cssText = 'margin:0.2rem 0 0;color:#aaffaa;font-size:0.85rem;';
+    line.textContent = '[boot] ' + step;
+    diagEl.appendChild(line);
+  }
+}
+
 import { dispatch, subscribe, loadFromStorage, getState } from './core/state.js';
 import { shouldFireWitchEncounter } from './core/reducer.js';
 
@@ -74,6 +94,8 @@ import { ROOM_DESCRIPTIONS } from './assets/room-data.js';
 // ─── Boot sequence ────────────────────────────────────────────────────────────
 
 async function boot() {
+  _logStep('boot() entered — module loaded successfully');
+
   // 1. Show loading bar at 10%.
   _setLoadingProgress(10, 'Initialising engine...');
 
@@ -81,31 +103,42 @@ async function boot() {
   const canvas = /** @type {HTMLCanvasElement} */ (
     document.getElementById('game-canvas')
   );
+  _logStep('canvas element resolved: ' + (canvas ? 'found' : 'NOT FOUND'));
 
   // 3. Initialise the 3D engine.
+  _logStep('Three.js loading (initEngine call)');
   initEngine(canvas);
+  _logStep('Three.js loaded — engine initialised');
   _setLoadingProgress(40, 'Engine ready.');
 
   // 4. Initialise audio (stub in v0.1).
+  _logStep('audio initialising');
   initAudio();
+  _logStep('audio initialised');
   _setLoadingProgress(50, 'Audio ready.');
 
   // 5. Install input bridges.
+  _logStep('installing input bridges');
   installKeyboardBridge();
   installMouseBridge(canvas);
   const joystickBase = /** @type {HTMLElement} */ (document.getElementById('touch-joystick-base'));
   const joystickKnob = /** @type {HTMLElement} */ (document.getElementById('touch-joystick-knob'));
   installTouchBridge(canvas, joystickBase, joystickKnob);
+  _logStep('input bridges installed');
   _setLoadingProgress(70, 'Input ready.');
 
   // 6. Install UI layers.
+  _logStep('installing UI layers');
   installOverlayController();
   mountInventoryPanel();
   mountHintPanel();
+  _logStep('UI layers installed');
   _setLoadingProgress(90, 'UI ready.');
 
   // 7. Check for a saved session.
+  _logStep('loading from storage');
   const hasSave = loadFromStorage();
+  _logStep('storage load complete (hasSave=' + !!hasSave + ')');
 
   // 8. Subscribe to state changes for cross-cutting reactions.
   subscribe(_onStateChange);
@@ -114,24 +147,32 @@ async function boot() {
   document.getElementById('btn-new-game')?.addEventListener('click', _startNewGame);
 
   // 10. Analytics page view.
+  _logStep('firing analytics page view');
   trackPageView();
 
   // 11. Show loading complete, then show main menu.
   _setLoadingProgress(100, 'Ready.');
+  _logStep('loading complete — pausing 300 ms before showing menu');
 
   await _pause(300); // brief pause so the "Ready." message reads.
 
+  _logStep('hiding loading screen');
   _hideLoadingScreen();
+  _logStep('showing main menu');
   showMainMenu();
+  _logStep('main menu shown');
 
   // Mark boot as complete so the pre-module 5-second diagnostic timeout does not fire.
   // window.__bootComplete is read by the classic-script block in index.html.
   window.__bootComplete = true;
+  _logStep('boot complete — window.__bootComplete set');
 
   // 12. Start the render loop (runs even at main menu to keep canvas alive).
   const camera = getCamera();
   if (camera) initFirstPersonController(camera);
+  _logStep('starting render loop');
   startLoop(_gameLoop);
+  _logStep('render loop started — first frame drawn');
 }
 
 // ─── Game loop ────────────────────────────────────────────────────────────────
