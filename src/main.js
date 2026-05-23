@@ -14,32 +14,21 @@
  *   src/analytics/ ← GoatCounter
  */
 
-// ─── Diagnostic: global error instrumentation (iOS Safari bug fix) ────────────
+// ─── Boot error reporter ──────────────────────────────────────────────────────
 //
-// iOS Safari can swallow errors that occur in event handlers or non-awaited
-// promises, leaving the loading screen stuck with no visible feedback.
-// This handler catches all uncaught errors and surfaces them in the loading
-// screen so the user (and Tim's remote diagnostics) can see what went wrong.
-// The region uses aria-live="assertive" so VoiceOver announces it immediately.
+// The pre-module diagnostic (window.onerror, window.onunhandledrejection, the
+// 5-second timeout, and the "Script executing" canary) lives in a classic
+// <script> block in index.html, placed before this module tag. That block runs
+// even if the module loader fails entirely on iOS Safari. See the comment in
+// index.html for the rationale.
 //
-// Also: if boot has not completed within 5 seconds, show a diagnostic message
-// so we get actionable information from a remote device with no devtools.
-
-const _bootDiagnosticEl = document.createElement('div');
-_bootDiagnosticEl.id = 'boot-diagnostic';
-_bootDiagnosticEl.setAttribute('role', 'alert');
-_bootDiagnosticEl.setAttribute('aria-live', 'assertive');
-_bootDiagnosticEl.setAttribute('aria-atomic', 'true');
-// Styled inline so it is visible regardless of CSS load status.
-_bootDiagnosticEl.style.cssText =
-  'position:fixed;bottom:0;left:0;right:0;background:#1a0000;color:#ffcccc;' +
-  'font:1rem/1.5 system-ui,sans-serif;padding:1rem;z-index:9999;display:none;' +
-  'word-break:break-word;max-height:50vh;overflow-y:auto;';
-document.body.appendChild(_bootDiagnosticEl);
+// This function is the module-layer fallback: if boot() itself throws (rather
+// than failing at import time), the .catch() below surfaces the error into the
+// same diagnostic panel the inline script created.
 
 /**
- * Displays an error in the on-screen diagnostic region.
- * Keeps the loading screen visible so the user can read the message.
+ * Appends a boot error to the on-screen diagnostic panel.
+ * The panel element is created by the pre-module inline script in index.html.
  * @param {string} message
  */
 function _showBootError(message) {
@@ -54,40 +43,16 @@ function _showBootError(message) {
       'The game failed to load. See the error details below.';
   }
 
-  // Show the diagnostic region.
-  _bootDiagnosticEl.style.display = 'block';
-  _bootDiagnosticEl.textContent = `Error: ${message}`;
-}
-
-window.addEventListener('error', (event) => {
-  _showBootError(
-    event.message +
-      (event.filename
-        ? ` (${event.filename.split('/').pop()}:${event.lineno})`
-        : '')
-  );
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-  const msg =
-    event.reason instanceof Error
-      ? event.reason.message
-      : String(event.reason);
-  _showBootError(`Unhandled promise rejection: ${msg}`);
-});
-
-// 5-second boot timeout: if the game is still on the loading screen,
-// update the text so a remote user can tell whether it is hung.
-let _bootComplete = false;
-setTimeout(() => {
-  if (!_bootComplete) {
-    const loadingText = document.getElementById('loading-text');
-    if (loadingText && loadingText.textContent !== 'The game failed to load. See the error details below.') {
-      loadingText.textContent =
-        'Loading is taking longer than expected. Check the browser console or error region for diagnostics.';
-    }
+  // Append to the diagnostic panel created by the inline script.
+  const diagEl = document.getElementById('boot-diagnostic');
+  if (diagEl) {
+    diagEl.style.display = 'block';
+    const line = document.createElement('p');
+    line.style.margin = '0.25rem 0 0';
+    line.textContent = 'Module error: ' + message;
+    diagEl.appendChild(line);
   }
-}, 5000);
+}
 
 import { dispatch, subscribe, loadFromStorage, getState } from './core/state.js';
 import { shouldFireWitchEncounter } from './core/reducer.js';
@@ -159,8 +124,9 @@ async function boot() {
   _hideLoadingScreen();
   showMainMenu();
 
-  // Mark boot as complete so the 5-second diagnostic timeout does not fire.
-  _bootComplete = true;
+  // Mark boot as complete so the pre-module 5-second diagnostic timeout does not fire.
+  // window.__bootComplete is read by the classic-script block in index.html.
+  window.__bootComplete = true;
 
   // 12. Start the render loop (runs even at main menu to keep canvas alive).
   const camera = getCamera();

@@ -16,6 +16,16 @@
     <!-- Referrer policy — delivered as meta because GitHub Pages cannot send headers. -->
     <meta name="referrer" content="strict-origin-when-cross-origin" />
 
+    <!--
+      DEV-ONLY cache-busting headers.
+      iPhone Safari aggressively caches assets during development.
+      These tags prevent stale bundles being served on hard refresh.
+      TODO: remove in the v1.0 hardening pass before production deployment.
+    -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <title>Sophie's Escape: The Witch's Castle</title>
     <meta name="description" content="Sophie is trapped in an ancient witch's castle. Explore ten interconnected rooms, collect items, solve puzzles, and escape — if you can." />
 
@@ -326,6 +336,103 @@
         </nav>
       </div>
     </dialog>
+
+    <!--
+      Pre-module diagnostic script.
+      This runs as a classic (non-module) script so it executes even when the
+      ES module loader fails completely on iOS Safari (syntax error, import
+      resolution failure, CSP violation, top-level await rejection).
+      The module block below this is where all that can go wrong; this block
+      is the canary that must run first.
+
+      Language level: iOS Safari 14.5 safe — var, function declarations,
+      no arrow functions in top-level code, no template literals, no optional
+      chaining, no nullish coalescing.
+    -->
+    <script>
+      /* jshint esversion: 5 */
+      (function () {
+        'use strict';
+
+        // ── 1. Build the on-screen diagnostic panel ──────────────────────────
+        var diagEl = document.createElement('div');
+        diagEl.id = 'boot-diagnostic';
+        diagEl.setAttribute('role', 'alert');
+        diagEl.setAttribute('aria-live', 'assertive');
+        diagEl.setAttribute('aria-atomic', 'true');
+        // Inline styles so the panel is visible regardless of CSS load state.
+        diagEl.style.cssText =
+          'position:fixed;bottom:0;left:0;right:0;background:#1a0000;color:#ffcccc;' +
+          'font:1rem/1.5 system-ui,sans-serif;padding:1rem;z-index:9999;display:none;' +
+          'word-break:break-word;max-height:50vh;overflow-y:auto;';
+        document.body.appendChild(diagEl);
+
+        // ── 2. Canary line ────────────────────────────────────────────────────
+        // This line appears the moment the inline script runs, before any
+        // module import. If Tim sees this on his iPhone, the HTML parser and
+        // the classic-script engine are both working. Any blank-screen issue
+        // is therefore inside the module graph that follows.
+        diagEl.style.display = 'block';
+        diagEl.textContent = 'Diagnostic: script executing.';
+
+        // ── 3. Helper: write a message to the panel and loading screen ────────
+        function showBootMessage(message, isError) {
+          var loadingScreen = document.getElementById('loading-screen');
+          if (loadingScreen) {
+            loadingScreen.hidden = false;
+          }
+
+          var loadingText = document.getElementById('loading-text');
+          if (loadingText) {
+            loadingText.textContent = isError
+              ? 'The game failed to load. See the error details below.'
+              : message;
+          }
+
+          diagEl.style.display = 'block';
+          // Append, do not replace, so earlier messages are not lost.
+          var line = document.createElement('p');
+          line.style.margin = '0.25rem 0 0';
+          line.textContent = message;
+          diagEl.appendChild(line);
+        }
+
+        // ── 4. Global error handler ───────────────────────────────────────────
+        window.onerror = function (msg, src, line, col, err) {
+          var detail = err && err.message ? err.message : String(msg);
+          if (src) {
+            var parts = src.split('/');
+            detail = detail + ' (' + parts[parts.length - 1] + ':' + line + ')';
+          }
+          showBootMessage('Error: ' + detail, true);
+          // Return false so the browser still logs it to the console.
+          return false;
+        };
+
+        // ── 5. Unhandled promise rejection handler ────────────────────────────
+        window.onunhandledrejection = function (event) {
+          var reason = event.reason;
+          var msg = (reason instanceof Error) ? reason.message : String(reason);
+          showBootMessage('Unhandled rejection: ' + msg, true);
+        };
+
+        // ── 6. Boot timeout ───────────────────────────────────────────────────
+        // If window.__bootComplete is not truthy after 5 seconds, show a
+        // "taking longer than usual" message. The module sets this flag at
+        // the end of the boot() function when it completes successfully.
+        setTimeout(function () {
+          if (!window.__bootComplete) {
+            var loadingText = document.getElementById('loading-text');
+            var alreadyFailed = loadingText &&
+              loadingText.textContent === 'The game failed to load. See the error details below.';
+            if (!alreadyFailed) {
+              showBootMessage('Loading is taking longer than usual. Check the error panel for details.', false);
+            }
+          }
+        }, 5000);
+
+      }());
+    </script>
 
     <!-- Entry point -->
     <script type="module" src="/src/main.js"></script>
