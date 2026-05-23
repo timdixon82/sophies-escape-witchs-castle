@@ -1,0 +1,31 @@
+# CodeQL static analysis.
+#
+# Action versions were verified against GitHub and pinned to commit SHAs
+# on 2026-05-21. The version tag is in the trailing comment.
+#
+# CodeQL does not support PHP, and on a free GitHub account it is not
+# available for a private repository. This workflow covers JavaScript for
+# a public static project. For a private PHP or WordPress project, remove
+# this workflow and rely on the Semgrep job in security.yml instead.
+
+name: CodeQL
+on:
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'  # weekly, Monday morning
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@9e0d7b8d25671d64c341c19c0152d693099fb5ba  # v4.35.5
+        with:
+          languages: javascript
+      - name: Analyse
+        uses: github/codeql-action/analyze@9e0d7b8d25671d64c341c19c0152d693099fb5ba  # v4.35.5

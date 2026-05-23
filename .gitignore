@@ -1,0 +1,42 @@
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# iCloud Drive sync conflict files. When the same file is modified in two
+# places (or iCloud perceives a conflict), it creates a sibling with a
+# numeric suffix before the extension: `name 2.md`, `name 3.md`, and so
+# on. They are sync artefacts, never intentional, and never belong in
+# the repository. See `docs/log.md` 2026-05-23 ingest entry.
+* 2.*
+* 3.*
+* 4.*
+* 5.*
+
+# Editor files
+.vscode/
+.idea/
+
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+dist/
+build/
+
+# Logs
+*.log
+
+# Claude Code local settings — local to this machine, not shared
+.claude/settings.local.json
+
+# Local input drop-zone — zips, design handoffs, and binaries Tim drops in
+# locally for the team to read. These do not belong in the shared repo.
+Inputs/
