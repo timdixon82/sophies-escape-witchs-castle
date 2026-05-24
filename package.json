@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Sophie's Escape: The Witch's Castle — a first-person browser 3D puzzle adventure.",
   "private": true,
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "scripts": {
     "dev": "vite --port 5173",
