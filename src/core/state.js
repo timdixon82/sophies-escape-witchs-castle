@@ -138,15 +138,18 @@ export function createInitialState() {
 }
 
 function _generateUUID() {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
+  // NFR-BROWSER-01 target browsers all support crypto.randomUUID:
+  // Chrome 92+, Safari 15.4+, Firefox 95+, Edge 92+.
+  // Using Math.random() as a fallback would produce predictable session IDs
+  // (CodeQL insecure-randomness High). Throw instead so the absence of the
+  // API is a clear feature-detection failure, not silent degradation.
+  if (typeof crypto === 'undefined' || typeof crypto.randomUUID !== 'function') {
+    throw new Error(
+      'crypto.randomUUID is not available in this environment. ' +
+      'Sophie\'s Escape requires Chrome 92+, Safari 15.4+, Firefox 95+, or Edge 92+.'
+    );
   }
-  // Fallback for environments without crypto.randomUUID.
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+  return crypto.randomUUID();
 }
 
 /**
