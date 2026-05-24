@@ -1,6 +1,42 @@
 import { defineConfig } from 'vite';
 
-export default defineConfig({
+// DEV ONLY: vite-plugin-mkcert enables HTTPS on the Vite dev server.
+//
+// iOS Safari (and other browsers) require HTTPS for ES module loading on
+// non-localhost origins (LAN IPs and Tailscale IPs). mkcert installs a local
+// certificate authority into the system keychain so the certificate is trusted
+// automatically by desktop browsers. On iOS, Tim must install the certificate
+// manually — see the manual step at the bottom of this file.
+//
+// This plugin has zero effect on the production build. The GitHub Pages
+// deployment is served over HTTPS by GitHub's own infrastructure.
+//
+// The plugin is deliberately excluded when Vitest is running (VITEST=true)
+// so that `npm test` does not attempt keychain writes or certificate generation.
+//
+// Manual step for iOS trust (required once, before first HTTPS dev session):
+// 1. In your terminal, run: mkcert -install
+//    (If mkcert is not yet installed: brew install mkcert, then mkcert -install)
+//    mkcert -install may require sudo for the keychain write:
+//      sudo mkcert -install
+// 2. Find the root CA file: mkcert -CAROOT prints the directory.
+//    The file is rootCA.pem inside that directory.
+// 3. AirDrop rootCA.pem to the iPhone, or share it via iCloud or email.
+// 4. On iPhone: open Settings, then General, then VPN and Device Management.
+//    Locate the downloaded certificate and tap Install.
+// 5. Open Settings, then General, then About, then Certificate Trust Settings.
+//    Enable full trust for the mkcert certificate authority.
+// 6. Restart the Vite dev server (Sonja will do this if it is already running).
+//    The dev URL changes from http:// to https://.
+// 7. On iPhone Safari, navigate to the https:// address (same port, 5174).
+//    The module script tag will load without the "failed to load" error.
+import mkcert from 'vite-plugin-mkcert';
+
+// Guard: only load the mkcert plugin when running `vite dev` or `vite serve`,
+// not during `vite build`, `vite preview`, or `vitest run`.
+const isVitestRun = Boolean(process.env['VITEST']);
+
+export default defineConfig(({ command }) => ({
   // GitHub Pages sub-path. Change to '/' if a custom domain is attached (ADR 009).
   base: '/sophies-escape-witchs-castle/',
 
@@ -24,8 +60,23 @@ export default defineConfig({
     format: 'es',
   },
 
-  // Development server on port 5173 (not 8000, which is reserved for JNS).
+  // Development server on port 5174 (not 8000, which is reserved for JNS).
+  // HTTPS is enabled in dev mode only via vite-plugin-mkcert so iOS Safari
+  // accepts ES module fetches over LAN and Tailscale IPs. In production,
+  // GitHub Pages provides HTTPS natively.
   server: {
-    port: 5173,
+    port: 5174,
+    // mkcert is activated by the plugin below; no manual https: {} config needed.
   },
-});
+
+  plugins: (command === 'serve' && !isVitestRun)
+    ? [
+        // Enable HTTPS on the dev server for iOS Safari module loading.
+        // vite-plugin-mkcert reads the mkcert-generated certificate from the
+        // mkcert CA root directory and configures Vite's server.https automatically.
+        // It has no effect when `vite build` or `vite preview` runs, and is
+        // excluded entirely during `vitest run` via the VITEST guard above.
+        mkcert(),
+      ]
+    : [],
+}));
