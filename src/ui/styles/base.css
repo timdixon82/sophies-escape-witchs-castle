@@ -5,6 +5,14 @@
  * in tokens.css apply here through the custom property references.
  */
 
+/* Ensure the HTML hidden attribute is respected even when an element has an
+   author-defined display property (e.g. display:flex). Without this rule the
+   browser UA stylesheet's [hidden]{display:none} is beaten by ID/class
+   selectors, leaving elements visible despite hidden being set. */
+[hidden] {
+  display: none !important;
+}
+
 /* Reset */
 *,
 *::before,
