@@ -37,7 +37,10 @@
 function _showBootError(message) {
   // Re-show the loading screen if it was hidden.
   const loadingScreen = document.getElementById('loading-screen');
-  if (loadingScreen) loadingScreen.hidden = false;
+  if (loadingScreen) {
+    loadingScreen.hidden = false;
+    loadingScreen.removeAttribute('aria-hidden');
+  }
 
   // Update the loading text to indicate failure.
   const loadingText = document.getElementById('loading-text');
@@ -289,9 +292,14 @@ function _startNewGame() {
     if (joystickArea) joystickArea.hidden = false;
   }
 
-  // Move focus to the canvas so VoiceOver has a clear landing point after the
-  // main menu dialog closes (canvas has tabindex="0" in index.html).
-  document.getElementById('game-canvas')?.focus();
+  // Move focus to the canvas after layout update so VoiceOver has a clear
+  // landing point after the main menu dialog closes. Deferring by one task
+  // (setTimeout 0) ensures the browser has completed layout before focus() is
+  // called — a silent no-op otherwise on mobile Safari (canvas has
+  // tabindex="0" in index.html).
+  setTimeout(function () {
+    document.getElementById('game-canvas')?.focus();
+  }, 0);
 
   // Announce game start.
   _announce(ROOM_DESCRIPTIONS['dungeon-cell']);
@@ -316,7 +324,10 @@ function _setLoadingProgress(percent, message) {
 
 function _hideLoadingScreen() {
   const screen = document.getElementById('loading-screen');
-  if (screen) screen.hidden = true;
+  if (screen) {
+    screen.hidden = true;
+    screen.setAttribute('aria-hidden', 'true');
+  }
 }
 
 function _isTouchDevice() {
