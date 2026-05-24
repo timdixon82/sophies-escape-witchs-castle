@@ -1,10 +1,24 @@
-# Accessibility checks: axe-core and Pa11y at WCAG 2.2 AAA.
+# Accessibility checks at WCAG 2.2 AAA using axe-core and Pa11y.
 #
-# Action versions were verified against GitHub and pinned to commit SHAs
-# on 2026-05-21. The version tag is in the trailing comment.
+# Runs on every pull request. Builds the Vite project, then serves the dist/
+# folder on port 8080, then runs both tools against it.
 #
-# The site must be built or served before the tools run. Adapt the serve
-# step and the URL to the project's stack.
+# Pa11y reads pa11y.json from the working directory automatically.
+# pa11y.json sets chromeLaunchConfig.args to ["--no-sandbox",
+# "--disable-setuid-sandbox"] so that Pa11y can launch Chromium on
+# Ubuntu 24.04 runners, which have AppArmor restrictions that block the
+# default sandboxed launch. This is the same pattern used in Poop-Breakout
+# (commit bd6c732). No --chromium-flags CLI argument is used; pa11y.json
+# is the Pa11y 9.x (Puppeteer-format) config file.
+#
+# Note: the canvas game area will report accessibility gaps detected by
+# Carol's baseline audit. These gaps are documented as accepted exceptions
+# at docs/exceptions/SE-001-3d-navigation.md. The pa11y and axe runs are
+# still required so that the HTML overlay surfaces (main menu, inventory,
+# hints, pause) pass the automated checks.
+#
+# No untrusted GitHub context variables are used in run steps.
+# Action SHAs verified on 2026-05-21.
 
 name: Accessibility
 on:
@@ -18,14 +32,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
         with:
           node-version: lts/*
-      - name: Install the accessibility tools
-        run: npm install -g pa11y @axe-core/cli
-      - name: Serve the site
-        run: 'echo "Adapt: start the site on http://localhost:8080"'
+          cache: npm
+
+      - name: Install project dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Install accessibility tools
+        run: npm install -g pa11y @axe-core/cli wait-on browser-driver-manager
+
+      - name: Install matching Chrome and ChromeDriver versions
+        run: npx browser-driver-manager install chrome
+
+      - name: Serve the built site
+        run: python3 -m http.server 8080 --directory dist &
+
+      - name: Wait for server to be ready
+        run: npx wait-on http://localhost:8080 --timeout 15000
+
       - name: Pa11y at WCAG 2.2 AAA
-        run: pa11y --standard WCAG2AAA "http://localhost:8080"
+        run: pa11y --standard WCAG2AAA "http://localhost:8080/sophies-escape-witchs-castle/"
+
       - name: axe-core at WCAG 2.2 AAA
-        run: axe "http://localhost:8080" --tags wcag2a,wcag2aa,wcag2aaa,wcag22aa,wcag22aaa
+        run: axe "http://localhost:8080/sophies-escape-witchs-castle/" --tags wcag2a,wcag2aa,wcag2aaa,wcag22aa,wcag22aaa --chrome-options="no-sandbox"
