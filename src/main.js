@@ -28,7 +28,10 @@
 
 /**
  * Appends a boot error to the on-screen diagnostic panel.
- * The panel element is created by the pre-module inline script in index.html.
+ * The panel and toggle button are created by the pre-module inline script in
+ * index.html. This function shows the toggle button, expands the panel, and
+ * also copies the message to the visually-hidden live region so screen readers
+ * hear the error immediately even if the panel was previously collapsed.
  * @param {string} message
  */
 function _showBootError(message) {
@@ -43,6 +46,13 @@ function _showBootError(message) {
       'The game failed to load. See the error details below.';
   }
 
+  // Show the toggle button and expand the panel.
+  const diagToggle = document.getElementById('diag-toggle');
+  if (diagToggle) {
+    diagToggle.style.display = 'block';
+    diagToggle.setAttribute('aria-expanded', 'true');
+  }
+
   // Append to the diagnostic panel created by the inline script.
   const diagEl = document.getElementById('boot-diagnostic');
   if (diagEl) {
@@ -51,6 +61,14 @@ function _showBootError(message) {
     line.style.margin = '0.25rem 0 0';
     line.textContent = 'Module error: ' + message;
     diagEl.appendChild(line);
+  }
+
+  // Announce to the visually-hidden live region so screen readers hear it
+  // immediately even when the panel was collapsed.
+  const diagLive = document.getElementById('diag-live');
+  if (diagLive) {
+    diagLive.textContent = '';
+    diagLive.textContent = 'Module error: ' + message;
   }
 }
 
@@ -64,14 +82,25 @@ function _showBootError(message) {
  */
 function _logStep(step) {
   console.log('[boot]', step);
+  // Append silently to the collapsed diagnostic panel. The panel starts hidden
+  // so boot step messages do not obstruct gameplay on a clean run. The toggle
+  // button (created by the inline script) lets Tim expand the panel if needed.
   const diagEl = document.getElementById('boot-diagnostic');
   if (diagEl) {
-    diagEl.style.display = 'block';
     const line = document.createElement('p');
     line.style.cssText = 'margin:0.2rem 0 0;color:#aaffaa;font-size:0.85rem;';
     line.textContent = '[boot] ' + step;
     diagEl.appendChild(line);
   }
+}
+
+/**
+ * Called when boot completes successfully. Hides the diagnostics toggle button
+ * so a clean boot leaves no diagnostic UI visible.
+ */
+function _hideDiagnostics() {
+  const diagToggle = document.getElementById('diag-toggle');
+  if (diagToggle) diagToggle.style.display = 'none';
 }
 
 import { dispatch, subscribe, loadFromStorage, getState } from './core/state.js';
@@ -83,7 +112,7 @@ import { installKeyboardBridge } from './render/input/keyboard-bridge.js';
 import { installMouseBridge } from './render/input/mouse-bridge.js';
 import { installTouchBridge } from './render/input/touch-bridge.js';
 
-import { installOverlayController, showMainMenu } from './ui/overlay-controller.js';
+import { installOverlayController, showMainMenu, closeOverlayById } from './ui/overlay-controller.js';
 import { mountInventoryPanel } from './ui/inventory-panel.js';
 import { mountHintPanel } from './ui/hint-panel.js';
 
@@ -167,6 +196,10 @@ async function boot() {
   window.__bootComplete = true;
   _logStep('boot complete — window.__bootComplete set');
 
+  // Hide the diagnostics toggle button. On a clean boot there are no errors,
+  // so there is no reason to show the diagnostic UI.
+  _hideDiagnostics();
+
   // 12. Start the render loop (runs even at main menu to keep canvas alive).
   const camera = getCamera();
   if (camera) initFirstPersonController(camera);
@@ -240,11 +273,9 @@ function _startNewGame() {
   dispatch({ type: 'NEW_GAME' });
   trackEvent('game-started');
 
-  // Close main menu, show canvas and HUD.
-  const mainMenu = /** @type {HTMLDialogElement | null} */ (
-    document.getElementById('overlay-main-menu')
-  );
-  if (mainMenu?.open) mainMenu.close();
+  // Close main menu through the overlay controller so _openStack, focus
+  // management, aria-expanded, and OVERLAY_CLOSED are all handled correctly.
+  closeOverlayById('overlay-main-menu');
 
   const canvas = document.getElementById('game-canvas');
   if (canvas) canvas.hidden = false;
@@ -257,6 +288,10 @@ function _startNewGame() {
     const joystickArea = document.getElementById('touch-joystick-area');
     if (joystickArea) joystickArea.hidden = false;
   }
+
+  // Move focus to the canvas so VoiceOver has a clear landing point after the
+  // main menu dialog closes (canvas has tabindex="0" in index.html).
+  document.getElementById('game-canvas')?.focus();
 
   // Announce game start.
   _announce(ROOM_DESCRIPTIONS['dungeon-cell']);

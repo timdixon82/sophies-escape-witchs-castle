@@ -99,6 +99,16 @@ export function showMainMenu() {
   _showMainMenu();
 }
 
+/**
+ * Closes an overlay by ID, routing through the controller's private _close()
+ * so that _openStack, focus management, aria-expanded, and OVERLAY_CLOSED
+ * are all handled correctly.
+ * @param {string} overlayId
+ */
+export function closeOverlayById(overlayId) {
+  _close(overlayId);
+}
+
 // ─── Private ─────────────────────────────────────────────────────────────────
 
 function _showMainMenu() {
