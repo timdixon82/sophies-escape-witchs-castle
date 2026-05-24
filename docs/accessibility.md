@@ -171,6 +171,12 @@ Mitigation: The game's narrative content (room descriptions, item discovery, puz
 
 Tim's approval: Required. This exception is not valid until Tim reviews and signs it. The exception record file will be created at `docs/exceptions/SE-001-3d-navigation.md` when Tim approves.
 
+## CI accessibility tooling
+
+### Pa11y AppArmor fix for Ubuntu 24.04 runners
+
+Pa11y 9.x is built on Puppeteer. On Ubuntu 24.04 GitHub Actions runners, AppArmor blocks the default sandboxed Chromium launch. The fix is `pa11y.json` at the project root with `chromeLaunchConfig.args` set to `["--no-sandbox", "--disable-setuid-sandbox"]`. Pa11y reads this file automatically from the working directory. No CLI flag is needed; the older `--chromium-flags` argument is not the correct key for Pa11y 9.x. This is the same pattern used in Poop-Breakout (commit `bd6c732`).
+
 ### Exception SE-002: Saturated magical accent colours as non-text 3D decoration
 
 Criterion: 1.4.6 Contrast Enhanced, Level AAA.
