@@ -356,28 +356,71 @@
       (function () {
         'use strict';
 
-        // ── 1. Build the on-screen diagnostic panel ──────────────────────────
+        // ── 1. Visually-hidden live region for immediate screen-reader announcements ──
+        // This region is always present in the DOM. When an error occurs the message
+        // is written here so VoiceOver and JAWS hear it immediately, even when the
+        // diagnostic panel is collapsed.
+        var diagLive = document.createElement('div');
+        diagLive.id = 'diag-live';
+        diagLive.setAttribute('role', 'alert');
+        diagLive.setAttribute('aria-live', 'assertive');
+        diagLive.setAttribute('aria-atomic', 'true');
+        diagLive.style.cssText =
+          'position:absolute;width:1px;height:1px;overflow:hidden;' +
+          'clip:rect(0,0,0,0);white-space:nowrap;';
+        document.body.appendChild(diagLive);
+
+        // ── 2. Diagnostics toggle button (top-left icon) ─────────────────────
+        // Shown immediately as a small fixed icon. Hides on clean boot.
+        var diagToggle = document.createElement('button');
+        diagToggle.id = 'diag-toggle';
+        diagToggle.type = 'button';
+        diagToggle.setAttribute('aria-expanded', 'false');
+        diagToggle.setAttribute('aria-controls', 'boot-diagnostic');
+        diagToggle.setAttribute('aria-label', 'Diagnostics');
+        diagToggle.style.cssText =
+          'position:fixed;top:0.5rem;left:0.5rem;z-index:10000;width:44px;height:44px;' +
+          'background:#1a0000;color:#ffcccc;border:1px solid #ff6666;border-radius:4px;' +
+          'font:1.2rem/1 system-ui,sans-serif;cursor:pointer;display:block;';
+        diagToggle.textContent = 'ⓘ';
+        document.body.appendChild(diagToggle);
+
+        // ── 3. Diagnostic panel (collapsed by default) ───────────────────────
         var diagEl = document.createElement('div');
         diagEl.id = 'boot-diagnostic';
-        diagEl.setAttribute('role', 'alert');
-        diagEl.setAttribute('aria-live', 'assertive');
-        diagEl.setAttribute('aria-atomic', 'true');
+        diagEl.setAttribute('role', 'log');
+        diagEl.setAttribute('aria-label', 'Boot diagnostics');
         // Inline styles so the panel is visible regardless of CSS load state.
         diagEl.style.cssText =
-          'position:fixed;bottom:0;left:0;right:0;background:#1a0000;color:#ffcccc;' +
-          'font:1rem/1.5 system-ui,sans-serif;padding:1rem;z-index:9999;display:none;' +
-          'word-break:break-word;max-height:50vh;overflow-y:auto;';
+          'position:fixed;top:3rem;left:0.5rem;width:min(90vw,400px);background:#1a0000;' +
+          'color:#ffcccc;font:0.9rem/1.5 system-ui,sans-serif;padding:1rem;z-index:9999;' +
+          'display:none;word-break:break-word;max-height:50vh;overflow-y:auto;' +
+          'border:1px solid #ff6666;border-radius:4px;';
         document.body.appendChild(diagEl);
 
-        // ── 2. Canary line ────────────────────────────────────────────────────
-        // This line appears the moment the inline script runs, before any
-        // module import. If Tim sees this on his iPhone, the HTML parser and
-        // the classic-script engine are both working. Any blank-screen issue
-        // is therefore inside the module graph that follows.
-        diagEl.style.display = 'block';
-        diagEl.textContent = 'Diagnostic: script executing.';
+        // ── 4. Toggle button click handler ───────────────────────────────────
+        diagToggle.onclick = function () {
+          if (diagEl.style.display === 'none') {
+            diagEl.style.display = 'block';
+            diagToggle.setAttribute('aria-expanded', 'true');
+          } else {
+            diagEl.style.display = 'none';
+            diagToggle.setAttribute('aria-expanded', 'false');
+          }
+        };
 
-        // ── 3. Helper: write a message to the panel and loading screen ────────
+        // ── 5. Canary line ────────────────────────────────────────────────────
+        // Appended to the collapsed panel. The toggle button is already visible
+        // as the small icon. The panel itself stays collapsed (display:none) so
+        // it does not obstruct gameplay on a clean boot.
+        var canary = document.createElement('p');
+        canary.style.margin = '0';
+        canary.textContent = 'Diagnostic: script executing.';
+        diagEl.appendChild(canary);
+
+        // ── 6. Helper: write an error message to the panel and announce it ────
+        // Also auto-expands the panel so Tim can see the message without having
+        // to activate the toggle button first.
         function showBootMessage(message, isError) {
           var loadingScreen = document.getElementById('loading-screen');
           if (loadingScreen) {
@@ -391,15 +434,24 @@
               : message;
           }
 
+          // Expand the panel and update toggle state.
+          diagToggle.style.display = 'block';
           diagEl.style.display = 'block';
-          // Append, do not replace, so earlier messages are not lost.
+          diagToggle.setAttribute('aria-expanded', 'true');
+
+          // Announce to the visually-hidden live region so screen readers hear
+          // the error immediately, even if the panel was previously collapsed.
+          diagLive.textContent = '';
+          diagLive.textContent = message;
+
+          // Append to panel, do not replace, so earlier messages are not lost.
           var line = document.createElement('p');
           line.style.margin = '0.25rem 0 0';
           line.textContent = message;
           diagEl.appendChild(line);
         }
 
-        // ── 4. Global error handler ───────────────────────────────────────────
+        // ── 7. Global error handler ───────────────────────────────────────────
         window.onerror = function (msg, src, line, col, err) {
           var detail = err && err.message ? err.message : String(msg);
           if (src) {
@@ -411,14 +463,14 @@
           return false;
         };
 
-        // ── 5. Unhandled promise rejection handler ────────────────────────────
+        // ── 8. Unhandled promise rejection handler ────────────────────────────
         window.onunhandledrejection = function (event) {
           var reason = event.reason;
           var msg = (reason instanceof Error) ? reason.message : String(reason);
           showBootMessage('Unhandled rejection: ' + msg, true);
         };
 
-        // ── 6. Boot timeout ───────────────────────────────────────────────────
+        // ── 9. Boot timeout ───────────────────────────────────────────────────
         // If window.__bootComplete is not truthy after 5 seconds, show a
         // "taking longer than usual" message. The module sets this flag at
         // the end of the boot() function when it completes successfully.
@@ -438,7 +490,7 @@
 
     <!-- Entry point -->
     <script type="module" src="/src/main.js"
-      onerror="var _d=document.getElementById('boot-diagnostic');if(_d){_d.style.display='block';var _p=document.createElement('p');_p.style.color='#ffcccc';_p.textContent='Error: module script failed to load ('+this.src+'). Check the network tab or your connection.';_d.appendChild(_p);}var _lt=document.getElementById('loading-text');if(_lt){_lt.textContent='The game failed to load. See the error details below.';}var _ls=document.getElementById('loading-screen');if(_ls){_ls.hidden=false;}"></script>
+      onerror="var _t=document.getElementById('diag-toggle');var _d=document.getElementById('boot-diagnostic');var _l=document.getElementById('diag-live');if(_t){_t.style.display='block';_t.setAttribute('aria-expanded','true');}if(_d){_d.style.display='block';var _p=document.createElement('p');_p.style.color='#ffcccc';_p.textContent='Error: module script failed to load ('+this.src+'). Check the network tab or your connection.';_d.appendChild(_p);}if(_l){_l.textContent='Error: module script failed to load. Check the network tab or your connection.';}var _lt=document.getElementById('loading-text');if(_lt){_lt.textContent='The game failed to load. See the error details below.';}var _ls=document.getElementById('loading-screen');if(_ls){_ls.hidden=false;}"></script>
 
     <!-- Service worker registration — runs after first paint so it does not
          delay the visible main menu (ADR 008). -->
