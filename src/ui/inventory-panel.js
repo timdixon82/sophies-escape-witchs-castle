@@ -77,13 +77,19 @@ function _render(state) {
  * @param {string[]} selected
  */
 function _renderItems(grid, items, selected) {
-  // Remove buttons that no longer exist.
+  // Remove listitem wrappers whose item is no longer in the inventory.
+  // Each button is wrapped in a div[role=listitem]; remove the wrapper so
+  // no empty listitem shells are left in the grid.
   const existingBtns = /** @type {NodeListOf<HTMLButtonElement>} */ (
     grid.querySelectorAll('.inventory-item-btn')
   );
   const currentIds = new Set(items.map((i) => i.itemId));
   existingBtns.forEach((btn) => {
-    if (!currentIds.has(btn.dataset.itemId ?? '')) btn.remove();
+    if (!currentIds.has(btn.dataset.itemId ?? '')) {
+      // Remove the parent listitem wrapper if present, else the button itself.
+      const wrapper = btn.closest('[role="listitem"]');
+      (wrapper ?? btn).remove();
+    }
   });
 
   // Add or update buttons.
@@ -104,8 +110,14 @@ function _renderItems(grid, items, selected) {
       nameEl.textContent = _formatItemName(item.itemId);
       btn.appendChild(nameEl);
 
+      // Wrap the button in a listitem container so the ARIA list/listitem
+      // relationship is valid (WCAG 1.3.1, 4.1.2 — Fix 3).
+      const listItem = document.createElement('div');
+      listItem.setAttribute('role', 'listitem');
+      listItem.appendChild(btn);
+
       // Append in collection order (items are ordered by pickedUpAt in state).
-      grid.appendChild(btn);
+      grid.appendChild(listItem);
     }
 
     const isSelected = selected.includes(item.itemId);

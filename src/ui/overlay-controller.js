@@ -38,6 +38,12 @@ export function installOverlayController() {
   _unsubs.push(on('OPEN_PAUSE', () => _open('overlay-pause', 'hud-pause-btn')));
   _unsubs.push(on('CLOSE_OVERLAY', () => _closeTop()));
 
+  // Focus trap: NEXT_FOCUSABLE / PREV_FOCUSABLE (WCAG 2.1.2).
+  // Required when showModal()'s native focus trap is unavailable
+  // (iOS Safari 15.3 and below, or attribute-open fallback).
+  _unsubs.push(on('NEXT_FOCUSABLE', () => _moveFocusByStep(1)));
+  _unsubs.push(on('PREV_FOCUSABLE', () => _moveFocusByStep(-1)));
+
   // Close button clicks (data-overlay-close attribute on buttons in HTML).
   document.addEventListener('click', (e) => {
     const btn = /** @type {HTMLElement} */ (e.target)?.closest('[data-overlay-close]');
@@ -140,6 +146,13 @@ function _open(overlayId, triggerElementId) {
       dialog.style.display = '';
     }
   }
+
+  // Intercept the browser's native cancel event (fired by showModal() on
+  // Escape) so the keyboard bridge remains the sole close path. Without this,
+  // the dialog closes before _close() removes it from _openStack, which
+  // desynchronises overlay state (implementation defect, Fix 5).
+  dialog.addEventListener('cancel', (e) => e.preventDefault(), { once: false });
+
   _openStack.push(overlayId);
 
   // Move focus inside the overlay.
@@ -209,6 +222,33 @@ function _toggle(overlayId, triggerElementId) {
   } else {
     _open(overlayId, triggerElementId);
   }
+}
+
+/**
+ * Advances focus by `step` (+1 or -1) within the topmost open dialog,
+ * wrapping at the boundaries. Used for manual focus trapping when the
+ * browser's native showModal() trap is not in effect.
+ * @param {number} step  +1 for forward (Tab), -1 for backward (Shift+Tab)
+ */
+function _moveFocusByStep(step) {
+  if (_openStack.length === 0) return;
+  const topId = _openStack[_openStack.length - 1];
+  const dialog = document.getElementById(topId);
+  if (!dialog) return;
+
+  const focusable = _getFocusableElements(dialog);
+  if (focusable.length === 0) return;
+
+  const current = document.activeElement;
+  const idx = focusable.indexOf(/** @type {HTMLElement} */ (current));
+  let next;
+  if (idx === -1) {
+    // Focus is not inside the dialog — move to first or last.
+    next = step > 0 ? focusable[0] : focusable[focusable.length - 1];
+  } else {
+    next = focusable[(idx + step + focusable.length) % focusable.length];
+  }
+  next.focus();
 }
 
 /**
