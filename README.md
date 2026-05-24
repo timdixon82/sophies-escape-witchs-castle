@@ -25,7 +25,7 @@ Ages nine and up, family friendly. Estimated play time thirty to sixty minutes.
 
 Browser-based, fully client-side. No server, no login, no installation. The game loads in a browser tab and plays from there.
 
-The 3D engine is Three.js, chosen for its smaller bundle size and mobile performance (see `docs/decisions/001-3d-engine-choice.md`). Audio is managed by Howler.js and sourced entirely from the BBC Sound Effects Library at bbcrewind.co.uk/sound-effects. The full tech stack is in `docs/coding-standards.md`.
+The 3D engine is Three.js, chosen for its smaller bundle size and mobile performance (see `docs/decisions/001-3d-engine-choice.md`). Audio is managed by Howler.js. Audio assets are sourced from CC0 and Creative Commons libraries including freesound.org, Web Audio API procedural synthesis, and potentially the BBC Sound Effects Library; final picks are listed in `CREDITS.md`. The full tech stack is in `docs/coding-standards.md`.
 
 ## Accessibility
 
@@ -84,7 +84,13 @@ Sophie moves through ten rooms in the witch's castle:
 
 ## Licence
 
-Source code: MIT Licence (pending Tim's confirmation; see `docs/decisions/` once confirmed). The BBC Sound Effects Library audio is used under the BBC's non-commercial terms and is not covered by the source code licence. Attribution for each audio file is in the game's Credits screen and in `docs/requirements.md`.
+Source code: PolyForm Noncommercial 1.0.0. Sophie's Escape is non-commercial; the `LICENSE` file at the repository root carries the full terms. Commercial use requires a separate licence agreement with Tim Dixon.
+
+Audio assets carry their own licences, listed individually in `CREDITS.md`. The BBC Sound Effects Library is one candidate source among several; see `docs/design-brief.md`, section 5, for the full note on audio sourcing.
+
+## Credits
+
+Every dependency, analytics service, and third-party asset — including all audio picks made at the v0.2 audio build — is listed in [CREDITS.md](CREDITS.md) at the repository root. The in-game Credits screen will cross-reference the same file once it is built.
 
 ## Project wiki
 

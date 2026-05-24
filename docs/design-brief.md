@@ -69,6 +69,8 @@ Key sounds to source and implement:
 
 All audio should loop or trigger contextually. Ambient sounds play continuously per room.
 
+**Editor's note (2026-05-24):** The BBC Sound Effects Library is one option among several. The team also evaluates CC0 and CC BY libraries such as freesound.org and the Web Audio Application Programming Interface's procedural synthesis. The final picks land in `CREDITS.md` at the repository root.
+
 ---
 
 ## 6. Gameplay Mechanics
