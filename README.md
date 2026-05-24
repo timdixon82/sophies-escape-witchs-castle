@@ -45,6 +45,22 @@ In practice that means:
 
 The project's accessibility notes and any documented exceptions are at `docs/accessibility.md`.
 
+## Known accessibility gap and roadmap
+
+The 3D scene is rendered to a WebGL canvas. A screen reader user will hear "Sophie's Escape game view" from the canvas label, but the 3D room navigation is not perceivable by assistive technology.
+
+The chrome — the main menu, inventory panel, hint panel, and pause overlay — is fully accessible. Every overlay meets WCAG 2.2 AAA: full keyboard operation, ARIA dialog structure, announced state changes, and 7:1 minimum contrast throughout.
+
+The following work would make the 3D scene itself meaningful to a screen reader user:
+
+1. An `aria-live` mirror: an off-screen live region that narrates room name on entry, item interactions, hint progress, and witch encounter events, so a screen reader user receives real-time gameplay feedback without depending on the canvas.
+
+2. Event-driven audio cues: distinct sounds for navigation (moving between rooms, reaching a wall), item interaction, and witch encounters, giving real-time feedback through hearing rather than sight.
+
+3. A keyboard-only audio-navigation mode: a mode in which the player navigates by audio tones and spoken room descriptions, removing any dependency on the 3D view and making the core gameplay accessible to a screen reader user.
+
+These items are recorded as exception SE-001 in [docs/accessibility.md](docs/accessibility.md). They are out of scope for the current build.
+
 ## How to play
 
 Once the first playable build is live, this section will describe how to load the game and walk through the controls. Until then, the full controls reference is in section 9 of `docs/design-brief.md`.
