@@ -12,6 +12,7 @@
  *   E / Enter         → INTERACT (one-shot)
  *   I                 → TOGGLE_INVENTORY (one-shot)
  *   H                 → TOGGLE_HINTS (one-shot)
+ *   ? / F1            → TOGGLE_HELP (one-shot, only when no overlay open)
  *   Escape            → OPEN_PAUSE or CLOSE_OVERLAY depending on overlay state
  *   Tab               → NEXT_FOCUSABLE (when overlay open)
  *   Shift+Tab         → PREV_FOCUSABLE (when overlay open)
@@ -142,6 +143,14 @@ function _onKeydown(e) {
     case 'h':
     case 'H':
       emit('TOGGLE_HINTS');
+      break;
+    case '?':
+      if (!_overlaysOpen()) emit('TOGGLE_HELP');
+      break;
+    case 'F1':
+      // Prevent browser from opening its own help dialog.
+      e.preventDefault();
+      if (!_overlaysOpen()) emit('TOGGLE_HELP');
       break;
     case ' ':
       if (_overlaysOpen()) emit('ACTIVATE_FOCUSED');

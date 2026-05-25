@@ -438,3 +438,63 @@ dialog::backdrop {
 #overlay-pause .menu-list {
   width: 100%;
 }
+
+/* ================================================================
+   Help overlay
+   Centred dialog, max-width 560px, scrollable when content
+   exceeds viewport height.
+   ================================================================ */
+
+#overlay-help[open] {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+#overlay-help .overlay-inner {
+  width: min(560px, calc(100% - 32px));
+
+  /* Allow inner panel to grow taller than viewport; the dialog scrolls. */
+  max-height: none;
+}
+
+/* Inner panel variant for help: no centred alignment, text reads left. */
+.overlay-inner-help {
+  align-items: stretch;
+}
+
+/* Help content container */
+.help-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Section heading within the help overlay */
+.help-section-heading {
+  font-size: var(--text-body-size);
+  font-weight: var(--text-button-weight);
+  color: var(--accent-amber);
+
+  /* --accent-amber on --bg-panel: 8.46:1 — passes AAA. */
+  margin-bottom: 8px;
+}
+
+/* Help bullet lists */
+.help-list {
+  list-style: disc;
+  padding-inline-start: 1.25em;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--fg-primary);
+
+  /* --fg-primary on --bg-panel: 14.34:1 — passes AAA. */
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+}
