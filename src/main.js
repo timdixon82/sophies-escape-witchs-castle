@@ -338,10 +338,12 @@ function _announce(message) {
 }
 
 function _setLoadingProgress(percent, message) {
+  const bar = document.getElementById('loading-bar');
   const fill = document.getElementById('loading-bar-fill');
   const text = document.getElementById('loading-text');
+  // Update aria-valuenow on the progressbar element (not the fill div).
+  if (bar) bar.setAttribute('aria-valuenow', String(percent));
   if (fill) fill.style.width = `${percent}%`;
-  if (fill) fill.setAttribute('aria-valuenow', String(percent));
   if (text) text.textContent = message;
 }
 

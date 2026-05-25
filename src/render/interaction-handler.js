@@ -333,6 +333,12 @@ function _updateKeyboardNavList(announce) {
 
     const btn = document.createElement('button');
     btn.type = 'button';
+    // S-14: guard against missing label — screen readers would read the raw ID.
+    if (!label) {
+      console.warn(
+        `[interaction-handler] Mesh "${id}" has no label — screen readers will see the raw ID. Add a label property in room-data.js.`
+      );
+    }
     btn.textContent = label ?? id;
     btn.addEventListener('click', () => {
       _handleInteractable(mesh, announce);
