@@ -12,6 +12,7 @@
  */
 
 import { getState, subscribe, dispatch } from '../core/state.js';
+import { ITEMS, ITEM_COMBINATIONS } from '../assets/room-data.js';
 
 /** @type {(() => void) | null} */
 let _unsubscribe = null;
@@ -139,10 +140,22 @@ function _onCombineClick() {
   const selected = state.inventory.selectedItemIds;
   if (selected.length < 2) return;
 
-  // v0.1: no valid combinations exist yet. Always report invalid.
-  // TODO(v0.2): implement combination rules per item-dependency graph (Clarification 3).
-  _showFeedback('That combination did not work. Try something different.', 'error');
-  dispatch({ type: 'CLEAR_SELECTION' });
+  // v0.2: look up the combination in the combination table.
+  const sortedPair = [...selected].sort();
+  const combo = ITEM_COMBINATIONS.find(
+    (c) => c.inputs[0] === sortedPair[0] && c.inputs[1] === sortedPair[1]
+  );
+
+  if (!combo) {
+    _showFeedback('That combination did not work. Try something different.', 'error');
+    dispatch({ type: 'CLEAR_SELECTION' });
+    return;
+  }
+
+  dispatch({ type: 'COMBINE_ITEMS', payload: { itemIds: selected } });
+
+  const outputLabel = ITEMS[combo.output]?.label ?? combo.output;
+  _showFeedback(`Combined! You made: ${outputLabel}.`, 'success');
 }
 
 /**
@@ -166,11 +179,13 @@ function _showFeedback(message, type) {
 }
 
 /**
- * Converts an itemId like 'rusty-key' to a readable label 'Rusty key'.
+ * Returns the display label for an item.
+ * Uses ITEMS data if available; falls back to splitting the id.
  * @param {string} itemId
  * @returns {string}
  */
 function _formatItemName(itemId) {
+  if (ITEMS[itemId]?.label) return ITEMS[itemId].label;
   return itemId
     .split('-')
     .map((word, i) => (i === 0 ? word[0].toUpperCase() + word.slice(1) : word))

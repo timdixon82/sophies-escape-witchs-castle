@@ -32,6 +32,7 @@ let _lookTouchId = null;
 let _lookPrevX = 0;
 let _lookPrevY = 0;
 let _joystickTouchId = null;
+// eslint-disable-next-line no-unused-vars -- retained for v0.2: horizontal joystick look (only Y used in v0.1)
 let _joystickOriginX = 0;
 let _joystickOriginY = 0;
 

@@ -1,0 +1,363 @@
+/**
+ * Sophie's Escape — Interaction Handler (v0.2)
+ *
+ * Listens for INTERACT intents from the intent bus.
+ * Uses a THREE.Raycaster to detect what interactable object the player
+ * is looking at (centre of the screen = camera forward direction).
+ *
+ * Resolves the object's userData.type to decide what action to fire:
+ *
+ *   type: 'item'    → dispatch PICK_UP_ITEM
+ *   type: 'door'    → check precondition, then dispatch ENTER_ROOM
+ *   type: 'puzzle'  → check required items, then dispatch USE_ITEM_ON_TARGET
+ *   type: 'examine' → dispatch EXAMINE_CLUE
+ *
+ * Accessibility: every interaction outcome is announced via the game-announcer
+ * ARIA live region, so screen-reader users hear what happened.
+ *
+ * Keyboard accessibility: _updateKeyboardNavList() builds a visually-hidden list
+ * of buttons, one per interactable in the current room. Each button triggers
+ * the same logic as a Raycaster click. This satisfies WCAG 2.1.1 Keyboard.
+ */
+
+import * as THREE from 'three';
+import { on } from './input/intent-bus.js';
+import { dispatch, getState } from '../core/state.js';
+import { getCamera } from './engine.js';
+import { getInteractables, enterRoom } from './room-manager.js';
+import { PUZZLE_DEFINITIONS, ITEMS } from '../assets/room-data.js';
+
+/** @type {THREE.Raycaster} */
+const _raycaster = new THREE.Raycaster();
+
+/** The centre of the screen in NDC (Normalised Device Coordinates). */
+const _screenCentre = new THREE.Vector2(0, 0);
+
+/** Max interaction distance in metres. */
+const INTERACT_DISTANCE = 4.0;
+
+/** @type {(() => void) | null} */
+let _unsubInteract = null;
+
+/** @type {HTMLElement | null} */
+let _keyboardNavList = null;
+
+/** @type {HTMLElement | null} */
+let _crosshair = null;
+
+/**
+ * Installs the interaction handler. Call once after initRoomManager().
+ * @param {(message: string) => void} announce — function that writes to the ARIA live region
+ */
+export function installInteractionHandler(announce) {
+  _unsubInteract = on('INTERACT', () => _onInteract(announce));
+  _installKeyboardNav(announce);
+  _installCrosshair();
+}
+
+/**
+ * Removes the interaction handler.
+ */
+export function removeInteractionHandler() {
+  if (_unsubInteract) {
+    _unsubInteract();
+    _unsubInteract = null;
+  }
+  if (_keyboardNavList) {
+    _keyboardNavList.remove();
+    _keyboardNavList = null;
+  }
+  if (_crosshair) {
+    _crosshair.remove();
+    _crosshair = null;
+  }
+}
+
+/**
+ * Updates the keyboard navigation list when the room changes.
+ * Call from main.js whenever currentRoomId changes.
+ * @param {(message: string) => void} announce
+ */
+export function refreshInteractionList(announce) {
+  _updateKeyboardNavList(announce);
+}
+
+// ─── Private: crosshair ───────────────────────────────────────────────────────
+
+function _installCrosshair() {
+  _crosshair = document.getElementById('game-crosshair');
+  if (!_crosshair) {
+    _crosshair = document.createElement('div');
+    _crosshair.id = 'game-crosshair';
+    _crosshair.setAttribute('aria-hidden', 'true');
+    _crosshair.style.cssText = [
+      'position:fixed',
+      'top:50%',
+      'left:50%',
+      'transform:translate(-50%,-50%)',
+      'width:12px',
+      'height:12px',
+      'border:2px solid rgba(255,160,64,0.8)',
+      'border-radius:50%',
+      'pointer-events:none',
+      'z-index:10',
+    ].join(';');
+    document.body.appendChild(_crosshair);
+  }
+}
+
+// ─── Private: mouse/keyboard INTERACT handler ─────────────────────────────────
+
+function _onInteract(announce) {
+  const state = getState();
+  if (state.gameStatus !== 'playing') return;
+  if (state.openOverlays.length > 0) return;
+
+  const camera = getCamera();
+  if (!camera) return;
+
+  _raycaster.setFromCamera(_screenCentre, camera);
+
+  const interactables = getInteractables();
+  const hits = _raycaster.intersectObjects(interactables, false);
+
+  if (hits.length === 0 || hits[0].distance > INTERACT_DISTANCE) return;
+
+  const hit = hits[0].object;
+  _handleInteractable(hit, announce);
+}
+
+// ─── Private: interactable resolution ────────────────────────────────────────
+
+/**
+ * @param {THREE.Mesh} mesh
+ * @param {(message: string) => void} announce
+ */
+function _handleInteractable(mesh, announce) {
+  const { id, type } = mesh.userData;
+  const state = getState();
+
+  switch (type) {
+    case 'item':
+      _handleItemPickup(id, announce);
+      break;
+
+    case 'door':
+      _handleDoor(id, announce, state);
+      break;
+
+    case 'puzzle':
+      _handlePuzzleTarget(id, announce, state);
+      break;
+
+    case 'examine':
+      _handleExamine(id, announce, state);
+      break;
+
+    default:
+      break;
+  }
+}
+
+// ─── Item pickup ──────────────────────────────────────────────────────────────
+
+function _handleItemPickup(objectId, announce) {
+  // objectId is like 'item-bent-spoon' — strip prefix.
+  const itemId = objectId.replace(/^item-/, '');
+  const state = getState();
+
+  const alreadyHeld = state.inventory.items.some((i) => i.itemId === itemId);
+  if (alreadyHeld) {
+    const label = ITEMS[itemId]?.label ?? itemId;
+    announce(`You already have the ${label}.`);
+    return;
+  }
+
+  dispatch({ type: 'PICK_UP_ITEM', payload: { itemId } });
+
+  const label = ITEMS[itemId]?.label ?? itemId;
+  announce(`You picked up: ${label}.`);
+}
+
+// ─── Door navigation ──────────────────────────────────────────────────────────
+
+function _handleDoor(objectId, announce, state) {
+  // objectId is 'room1-door' or 'door-<roomId>'
+  let targetRoomId;
+
+  if (objectId === 'room1-door') {
+    // Cell door — requires cell-escape puzzle to be solved.
+    if (state.puzzles['cell-escape']?.state !== 'solved') {
+      announce('The door is locked. You need to find a way to open it.');
+      return;
+    }
+    targetRoomId = 'stone-corridor';
+  } else {
+    // Generic door — id is 'door-<roomId>'
+    targetRoomId = objectId.replace(/^door-/, '');
+  }
+
+  if (!targetRoomId) return;
+
+  dispatch({ type: 'ENTER_ROOM', payload: { roomId: targetRoomId } });
+  enterRoom(targetRoomId);
+  announce(`You enter the ${_roomName(targetRoomId)}.`);
+}
+
+// ─── Puzzle target ────────────────────────────────────────────────────────────
+
+function _handlePuzzleTarget(targetId, announce, state) {
+  // Find the puzzle for this target.
+  const puzzleEntry = Object.entries(PUZZLE_DEFINITIONS).find(
+    ([, def]) => def.target === targetId
+  );
+
+  if (!puzzleEntry) {
+    announce('Nothing happens.');
+    return;
+  }
+
+  const [puzzleId, puzzleDef] = puzzleEntry;
+
+  // Puzzle already solved.
+  if (state.puzzles[puzzleId]?.state === 'solved') {
+    announce('This puzzle is already solved.');
+    return;
+  }
+
+  // Check prerequisite puzzles.
+  const unmetPrereqs = puzzleDef.prerequisitePuzzles.filter(
+    (prereqId) => state.puzzles[prereqId]?.state !== 'solved'
+  );
+  if (unmetPrereqs.length > 0) {
+    announce('You are not ready for this puzzle yet. Explore more of the castle first.');
+    return;
+  }
+
+  // Check if player has all required items.
+  const heldNotConsumed = new Set(
+    state.inventory.items.filter((i) => !i.consumed).map((i) => i.itemId)
+  );
+  const allRequiredHeld = puzzleDef.requiredItems.every((id) => heldNotConsumed.has(id));
+
+  if (!allRequiredHeld) {
+    const missing = puzzleDef.requiredItems.filter((id) => !heldNotConsumed.has(id));
+    const missingNames = missing.map((id) => ITEMS[id]?.label ?? id).join(', ');
+    announce(`You need: ${missingNames}.`);
+    return;
+  }
+
+  // Fire the use-item-on-target intent. The reducer does the rest.
+  const itemId = state.inventory.selectedItemIds[0] ?? puzzleDef.requiredItems[0];
+  dispatch({ type: 'USE_ITEM_ON_TARGET', payload: { itemId, targetId } });
+
+  const updatedState = getState();
+  if (updatedState.puzzles[puzzleId]?.state === 'solved') {
+    let msg = 'Puzzle solved!';
+    if (puzzleDef.producedItem) {
+      const producedLabel = ITEMS[puzzleDef.producedItem]?.label ?? puzzleDef.producedItem;
+      msg += ` You found: ${producedLabel}.`;
+    }
+
+    // Special case: gate puzzle completes the game.
+    if (puzzleId === 'gate-pedestals') {
+      dispatch({ type: 'GAME_COMPLETE' });
+      announce('You have placed all three items. The gate swings open. You escape! Congratulations!');
+    } else {
+      announce(msg);
+    }
+  } else {
+    announce('Nothing happens. Make sure you have all the required items.');
+  }
+}
+
+// ─── Examine / clue observation ───────────────────────────────────────────────
+
+function _handleExamine(objectId, announce, state) {
+  if (objectId === 'examine-portrait-clue') {
+    const alreadyNoted = state.inventory.items.some((i) => i.itemId === 'portrait-clue');
+    if (alreadyNoted) {
+      announce('You have already noted the symbols: chalice, quill, and star.');
+      return;
+    }
+    dispatch({ type: 'EXAMINE_CLUE', payload: { clueItemId: 'portrait-clue' } });
+    announce('You observe three symbols on the portraits: a chalice, a quill, and a star. You note these down.');
+  }
+}
+
+// ─── Keyboard-accessible interaction list ────────────────────────────────────
+
+/**
+ * Builds a visually-hidden list of buttons for keyboard-only interaction.
+ * Each button represents one interactable in the current room.
+ * @param {(message: string) => void} announce
+ */
+function _installKeyboardNav(announce) {
+  _keyboardNavList = document.getElementById('interaction-kbd-list');
+  if (!_keyboardNavList) {
+    _keyboardNavList = document.createElement('ul');
+    _keyboardNavList.id = 'interaction-kbd-list';
+    _keyboardNavList.setAttribute('aria-label', 'Interactive objects in this room');
+    _keyboardNavList.setAttribute('role', 'list');
+    // Screen-reader-only: AT can reach it, visually hidden.
+    _keyboardNavList.style.cssText = [
+      'position:absolute',
+      'width:1px',
+      'height:1px',
+      'padding:0',
+      'margin:-1px',
+      'overflow:hidden',
+      'clip:rect(0,0,0,0)',
+      'white-space:nowrap',
+      'border:0',
+    ].join(';');
+    document.body.appendChild(_keyboardNavList);
+  }
+  _updateKeyboardNavList(announce);
+}
+
+function _updateKeyboardNavList(announce) {
+  if (!_keyboardNavList) return;
+
+  // Remove all existing children safely (no innerHTML).
+  while (_keyboardNavList.firstChild) {
+    _keyboardNavList.removeChild(_keyboardNavList.firstChild);
+  }
+
+  const interactables = getInteractables();
+
+  for (const mesh of interactables) {
+    const { id, label } = mesh.userData;
+    const li = document.createElement('li');
+    li.setAttribute('role', 'listitem');
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label ?? id;
+    btn.addEventListener('click', () => {
+      _handleInteractable(mesh, announce);
+    });
+
+    li.appendChild(btn);
+    _keyboardNavList.appendChild(li);
+  }
+}
+
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
+const _ROOM_NAMES = {
+  'dungeon-cell': 'Dungeon Cell',
+  'stone-corridor': 'Stone Corridor',
+  kitchen: 'Kitchen',
+  library: 'Library',
+  'great-hall': 'Great Hall',
+  chapel: 'Chapel',
+  armoury: 'Armoury',
+  'tower-room': 'Tower Room',
+  'witchs-study': "Witch's Study",
+  'castle-gate': 'Castle Gate',
+};
+
+function _roomName(roomId) {
+  return _ROOM_NAMES[roomId] ?? roomId;
+}

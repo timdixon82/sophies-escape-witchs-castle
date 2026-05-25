@@ -8,9 +8,17 @@
  * Witch trigger timer:
  * - Resets to zero on REVEAL_HINT (Decision 10, option A1).
  * - Does not tick when overlays are open or game is paused (Decision 10, B1).
+ *
+ * v0.2 additions:
+ *   USE_ITEM_ON_TARGET — use a held item on a scene target (puzzle trigger).
+ *   COMBINE_ITEMS      — combine two inventory items into one.
+ *   EXAMINE_CLUE       — observe a clue (adds it to inventory as a non-consumed note).
+ *   PUZZLE_COMPLETE    — alias for PUZZLE_SOLVED with optional item production.
+ *   GAME_COMPLETE      — alias for WIN, fires when castle gate opens.
  */
 
 import { createInitialState } from './state.js';
+import { ITEM_COMBINATIONS, PUZZLE_DEFINITIONS } from '../assets/room-data.js';
 
 // Witch trigger thresholds (milliseconds).
 const WITCH_TRIGGER_ROOMS_1_6 = 240_000; // 4 minutes (Tad Decision 10 recommendation)
@@ -266,6 +274,196 @@ export function reducer(state, action) {
       const { deltaMs } = action.payload;
       return { ...state, elapsedMs: state.elapsedMs + deltaMs };
     }
+
+    // ── v0.2 intents ─────────────────────────────────────────────────────────
+
+    /**
+     * USE_ITEM_ON_TARGET: apply a selected item to an interactable target.
+     * payload: { itemId, targetId }
+     *
+     * Looks up the puzzle definition whose target matches targetId.
+     * Checks whether itemId is a required item for that puzzle and whether
+     * all required items are held (not consumed).
+     * On success: marks puzzle solved, consumes items, adds produced item.
+     */
+    case 'USE_ITEM_ON_TARGET': {
+      const { targetId } = action.payload;
+
+      // Find the puzzle for this target.
+      const puzzleEntry = Object.entries(PUZZLE_DEFINITIONS).find(
+        ([, def]) => def.target === targetId
+      );
+      if (!puzzleEntry) return state;
+
+      const [puzzleId, puzzleDef] = puzzleEntry;
+
+      // Puzzle already solved — no-op.
+      if (state.puzzles[puzzleId]?.state === 'solved') return state;
+
+      // Check all required items are held and not consumed.
+      const heldIds = new Set(
+        state.inventory.items
+          .filter((i) => !i.consumed)
+          .map((i) => i.itemId)
+      );
+      const allRequiredHeld = puzzleDef.requiredItems.every((id) => heldIds.has(id));
+
+      // Record the attempt.
+      const existing = state.puzzles[puzzleId] ?? {
+        state: 'unsolved',
+        stepsCompleted: [],
+        attemptsCount: 0,
+      };
+
+      if (!allRequiredHeld) {
+        // Wrong or incomplete — just count the attempt.
+        return {
+          ...state,
+          puzzles: {
+            ...state.puzzles,
+            [puzzleId]: { ...existing, attemptsCount: existing.attemptsCount + 1 },
+          },
+        };
+      }
+
+      // Puzzle solved — consume items and add produced item.
+      let items = state.inventory.items.map((i) =>
+        puzzleDef.consumedItems.includes(i.itemId) ? { ...i, consumed: true } : i
+      );
+
+      if (puzzleDef.producedItem) {
+        const alreadyHeld = items.some((i) => i.itemId === puzzleDef.producedItem);
+        if (!alreadyHeld) {
+          items = [
+            ...items,
+            {
+              itemId: puzzleDef.producedItem,
+              pickedUpAt: new Date().toISOString(),
+              consumed: false,
+            },
+          ];
+        }
+      }
+
+      return {
+        ...state,
+        inventory: {
+          ...state.inventory,
+          items,
+          selectedItemIds: [],
+        },
+        puzzles: {
+          ...state.puzzles,
+          [puzzleId]: { ...existing, state: 'solved', attemptsCount: existing.attemptsCount + 1 },
+        },
+      };
+    }
+
+    /**
+     * COMBINE_ITEMS: attempt to combine two selected items.
+     * payload: { itemIds: [string, string] }
+     *
+     * Sorts the pair alphabetically to find the combination definition.
+     * On success: consumes the inputs and adds the output item.
+     * On failure: returns state unchanged (UI shows feedback separately).
+     */
+    case 'COMBINE_ITEMS': {
+      const { itemIds } = action.payload;
+      if (!itemIds || itemIds.length < 2) return state;
+
+      // Sort to match the combination table's canonical key.
+      const sortedPair = [...itemIds].sort();
+
+      const combo = ITEM_COMBINATIONS.find(
+        (c) =>
+          c.inputs[0] === sortedPair[0] && c.inputs[1] === sortedPair[1]
+      );
+
+      if (!combo) {
+        // No valid combination — return unchanged (UI shows "nothing happened").
+        return state;
+      }
+
+      // Consume inputs.
+      let items = state.inventory.items.map((i) =>
+        combo.consumedItems.includes(i.itemId) ? { ...i, consumed: true } : i
+      );
+
+      // Produce output.
+      const alreadyHeld = items.some((i) => i.itemId === combo.output);
+      if (!alreadyHeld) {
+        items = [
+          ...items,
+          {
+            itemId: combo.output,
+            pickedUpAt: new Date().toISOString(),
+            consumed: false,
+          },
+        ];
+      }
+
+      return {
+        ...state,
+        inventory: {
+          ...state.inventory,
+          items,
+          selectedItemIds: [],
+        },
+      };
+    }
+
+    /**
+     * EXAMINE_CLUE: observe a clue in the scene and record it as an inventory note.
+     * payload: { clueItemId }
+     *
+     * Adds the clue item to inventory (as a non-consumed note). The item is
+     * flagged with consumed: false so it remains visible in the inventory.
+     */
+    case 'EXAMINE_CLUE': {
+      const { clueItemId } = action.payload;
+      const alreadyHeld = state.inventory.items.some((i) => i.itemId === clueItemId);
+      if (alreadyHeld) return state;
+      return {
+        ...state,
+        inventory: {
+          ...state.inventory,
+          items: [
+            ...state.inventory.items,
+            {
+              itemId: clueItemId,
+              pickedUpAt: new Date().toISOString(),
+              consumed: false,
+            },
+          ],
+        },
+      };
+    }
+
+    /**
+     * PUZZLE_COMPLETE: alias for PUZZLE_SOLVED (used by scene interaction handler).
+     * payload: { puzzleId }
+     */
+    case 'PUZZLE_COMPLETE': {
+      const { puzzleId: completedPuzzleId } = action.payload;
+      const ex = state.puzzles[completedPuzzleId] ?? {
+        state: 'unsolved',
+        stepsCompleted: [],
+        attemptsCount: 0,
+      };
+      return {
+        ...state,
+        puzzles: {
+          ...state.puzzles,
+          [completedPuzzleId]: { ...ex, state: 'solved' },
+        },
+      };
+    }
+
+    /**
+     * GAME_COMPLETE: the game is won. Alias for WIN.
+     */
+    case 'GAME_COMPLETE':
+      return { ...state, gameStatus: 'won' };
 
     default:
       return state;
