@@ -2,8 +2,8 @@
  * Sophie's Escape — Overlay controller (ADR 002, ADR 005)
  *
  * Handles opening, closing, and focus-trapping of all overlay dialogs.
- * Consumes TOGGLE_INVENTORY, TOGGLE_HINTS, OPEN_PAUSE, CLOSE_OVERLAY
- * intents from the intent bus.
+ * Consumes TOGGLE_INVENTORY, TOGGLE_HINTS, OPEN_PAUSE, TOGGLE_HELP,
+ * CLOSE_OVERLAY intents from the intent bus.
  *
  * Accessibility contracts (WCAG 2.2 AAA, S-12 regression check):
  *   - On open: focus moves into the dialog.
@@ -36,6 +36,7 @@ export function installOverlayController() {
   _unsubs.push(on('TOGGLE_INVENTORY', () => _toggle('overlay-inventory', 'hud-inventory-btn')));
   _unsubs.push(on('TOGGLE_HINTS', () => _toggle('overlay-hint', 'hud-hint-btn')));
   _unsubs.push(on('OPEN_PAUSE', () => _open('overlay-pause', 'hud-pause-btn')));
+  _unsubs.push(on('TOGGLE_HELP', () => _toggle('overlay-help', 'hud-help-btn')));
   _unsubs.push(on('CLOSE_OVERLAY', () => _closeTop()));
 
   // Focus trap: NEXT_FOCUSABLE / PREV_FOCUSABLE (WCAG 2.1.2).
@@ -81,6 +82,9 @@ export function installOverlayController() {
   });
   document.getElementById('hud-pause-btn')?.addEventListener('click', () => {
     _open('overlay-pause', 'hud-pause-btn');
+  });
+  document.getElementById('hud-help-btn')?.addEventListener('click', () => {
+    _toggle('overlay-help', 'hud-help-btn');
   });
 }
 
@@ -205,6 +209,7 @@ function _close(overlayId) {
     'overlay-inventory': 'hud-inventory-btn',
     'overlay-hint': 'hud-hint-btn',
     'overlay-pause': 'hud-pause-btn',
+    'overlay-help': 'hud-help-btn',
   };
   const triggerElId = triggerMap[overlayId];
   if (triggerElId) {

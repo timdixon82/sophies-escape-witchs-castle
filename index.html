@@ -133,6 +133,23 @@
         </svg>
         <span class="hud-btn-label">Pause</span>
       </button>
+
+      <!-- Help button. -->
+      <button
+        type="button"
+        id="hud-help-btn"
+        aria-label="Help — how to play"
+        aria-expanded="false"
+        aria-controls="overlay-help"
+        class="hud-btn"
+      >
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <circle cx="12" cy="17" r="0.5" fill="currentColor"/>
+        </svg>
+        <span class="hud-btn-label">Help</span>
+      </button>
     </div>
 
     <!-- Touch joystick (shown only on touch devices during gameplay). -->
@@ -336,6 +353,81 @@
             </li>
           </ul>
         </nav>
+      </div>
+    </dialog>
+
+    <!-- Help overlay -->
+    <dialog
+      id="overlay-help"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="help-heading"
+    >
+      <div class="overlay-inner overlay-inner-help">
+        <div class="overlay-header">
+          <h2 id="help-heading" class="overlay-title">How to Play</h2>
+          <button
+            type="button"
+            class="overlay-close-btn"
+            aria-label="Close help"
+            data-overlay-close="overlay-help"
+          >
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="help-content">
+          <section aria-labelledby="help-moving-heading">
+            <h3 id="help-moving-heading" class="help-section-heading">Moving and looking</h3>
+            <ul class="help-list">
+              <li>Arrow keys or W, A, S, D to move</li>
+              <li>Mouse drag or pointer lock to look around</li>
+              <li>On touch screens: drag to look, on-screen joystick to move (coming soon)</li>
+            </ul>
+          </section>
+
+          <section aria-labelledby="help-pickup-heading">
+            <h3 id="help-pickup-heading" class="help-section-heading">Picking up items</h3>
+            <ul class="help-list">
+              <li>Press Enter or E when facing a glowing amber object to pick it up</li>
+              <li>Or use the keyboard list at the bottom of the screen: Tab to reach it, Enter to activate</li>
+            </ul>
+          </section>
+
+          <section aria-labelledby="help-using-heading">
+            <h3 id="help-using-heading" class="help-section-heading">Using items</h3>
+            <ul class="help-list">
+              <li>Open your inventory with the Inventory button (bottom right) or press I</li>
+              <li>Select an item, then press Enter on a puzzle object in the room to use the item on it</li>
+            </ul>
+          </section>
+
+          <section aria-labelledby="help-combining-heading">
+            <h3 id="help-combining-heading" class="help-section-heading">Combining items</h3>
+            <ul class="help-list">
+              <li>In the inventory, select one item then select another</li>
+              <li>Press the Combine button to combine them</li>
+            </ul>
+          </section>
+
+          <section aria-labelledby="help-hints-heading">
+            <h3 id="help-hints-heading" class="help-section-heading">Hints</h3>
+            <ul class="help-list">
+              <li>Press the Hint button (bottom left) or press H for a hint about the current room</li>
+              <li>Three hints are available per room, from subtle to direct</li>
+            </ul>
+          </section>
+
+          <section aria-labelledby="help-pausing-heading">
+            <h3 id="help-pausing-heading" class="help-section-heading">Pausing</h3>
+            <ul class="help-list">
+              <li>Press the Pause button (top right) or press Escape to pause</li>
+            </ul>
+          </section>
+        </div>
       </div>
     </dialog>
 

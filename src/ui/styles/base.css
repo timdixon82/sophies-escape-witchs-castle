@@ -190,6 +190,12 @@ body {
   right: 16px;
 }
 
+/* Help button: top-left. */
+#hud-help-btn {
+  top: 16px;
+  left: 16px;
+}
+
 /* Mobile: adjust positions and hide labels. */
 @media (width <= 600px) {
   .hud-btn-label {
