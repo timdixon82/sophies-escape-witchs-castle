@@ -1,5 +1,5 @@
 /**
- * Sophie's Escape — Interaction Handler (v0.2)
+ * Sophie's Escape — Interaction Handler (v0.3)
  *
  * Listens for INTERACT intents from the intent bus.
  * Uses a THREE.Raycaster to detect what interactable object the player
@@ -18,6 +18,11 @@
  * Keyboard accessibility: _updateKeyboardNavList() builds a visually-hidden list
  * of buttons, one per interactable in the current room. Each button triggers
  * the same logic as a Raycaster click. This satisfies WCAG 2.1.1 Keyboard.
+ *
+ * Per-frame highlight: tickHighlight(camera, announce) raycasts from the screen
+ * centre each frame. If the nearest hit is within INTERACT_DISTANCE, it applies
+ * an emissive boost to that mesh and resets all others. When the highlighted mesh
+ * changes the item label is announced to screen readers.
  */
 
 import * as THREE from 'three';
@@ -44,6 +49,25 @@ let _keyboardNavList = null;
 
 /** @type {HTMLElement | null} */
 let _crosshair = null;
+
+/**
+ * The mesh that is currently highlighted by tickHighlight.
+ * Tracked so we can reset its emissive when the highlight moves.
+ * @type {THREE.Mesh | null}
+ */
+let _highlightedMesh = null;
+
+/**
+ * Emissive intensity applied when an item is highlighted (within reach).
+ * @type {number}
+ */
+const HIGHLIGHT_INTENSITY = 1.5;
+
+/**
+ * Emissive intensity restored when an item is no longer highlighted.
+ * @type {number}
+ */
+const BASE_INTENSITY = 0.5;
 
 /**
  * Installs the interaction handler. Call once after initRoomManager().
@@ -80,6 +104,56 @@ export function removeInteractionHandler() {
  */
 export function refreshInteractionList(announce) {
   _updateKeyboardNavList(announce);
+}
+
+/**
+ * Per-frame hover highlight. Call this from the game loop each frame.
+ *
+ * Raycasts from the screen centre (NDC 0,0) toward the scene. If the nearest
+ * hit is within INTERACT_DISTANCE, that mesh receives a raised emissiveIntensity
+ * of HIGHLIGHT_INTENSITY; all other interactable meshes are reset to
+ * BASE_INTENSITY. When the highlighted mesh changes, the item label is announced
+ * to the screen reader via `announce` so keyboard and screen-reader users know
+ * what they are looking at.
+ *
+ * Only item-type meshes are highlighted; doors and puzzle targets are left at
+ * their authored emissive values.
+ *
+ * @param {THREE.PerspectiveCamera} camera
+ * @param {(message: string) => void} announce
+ */
+export function tickHighlight(camera, announce) {
+  const interactables = getInteractables();
+  if (!interactables.length) return;
+
+  _raycaster.setFromCamera(_screenCentre, camera);
+  const hits = _raycaster.intersectObjects(interactables, false);
+
+  /** @type {THREE.Mesh | null} */
+  let nearestItem = null;
+  if (hits.length > 0 && hits[0].distance <= INTERACT_DISTANCE) {
+    const candidate = hits[0].object;
+    if (candidate.userData.type === 'item') {
+      nearestItem = candidate;
+    }
+  }
+
+  // If the highlighted mesh has changed, update emissive intensities and announce.
+  if (nearestItem !== _highlightedMesh) {
+    // Reset the previously highlighted mesh.
+    if (_highlightedMesh && _highlightedMesh.material && !Array.isArray(_highlightedMesh.material)) {
+      _highlightedMesh.material.emissiveIntensity = BASE_INTENSITY;
+    }
+
+    // Apply the highlight to the new mesh.
+    if (nearestItem && nearestItem.material && !Array.isArray(nearestItem.material)) {
+      nearestItem.material.emissiveIntensity = HIGHLIGHT_INTENSITY;
+      const label = nearestItem.userData.label ?? nearestItem.userData.id;
+      announce(`${label} nearby.`);
+    }
+
+    _highlightedMesh = nearestItem;
+  }
 }
 
 // ─── Private: crosshair ───────────────────────────────────────────────────────
@@ -121,7 +195,10 @@ function _onInteract(announce) {
   const interactables = getInteractables();
   const hits = _raycaster.intersectObjects(interactables, false);
 
-  if (hits.length === 0 || hits[0].distance > INTERACT_DISTANCE) return;
+  if (hits.length === 0 || hits[0].distance > INTERACT_DISTANCE) {
+    announce('Nothing nearby to interact with.');
+    return;
+  }
 
   const hit = hits[0].object;
   _handleInteractable(hit, announce);

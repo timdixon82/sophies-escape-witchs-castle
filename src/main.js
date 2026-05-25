@@ -109,13 +109,13 @@ function _hideDiagnostics() {
 import { dispatch, subscribe, loadFromStorage, getState } from './core/state.js';
 import { shouldFireWitchEncounter } from './core/reducer.js';
 
-import { initEngine, startLoop, getCamera, getScene } from './render/engine.js';
+import { initEngine, startLoop, getCamera, getScene, getRenderer } from './render/engine.js';
 import { initFirstPersonController, updateFirstPersonController } from './render/first-person-controller.js';
 import { installKeyboardBridge } from './render/input/keyboard-bridge.js';
 import { installMouseBridge } from './render/input/mouse-bridge.js';
 import { installTouchBridge } from './render/input/touch-bridge.js';
-import { initRoomManager, enterRoom, rebuildCurrentRoom } from './render/room-manager.js';
-import { installInteractionHandler, refreshInteractionList } from './render/interaction-handler.js';
+import { initRoomManager, enterRoom, rebuildCurrentRoom, updateItemLabels } from './render/room-manager.js';
+import { installInteractionHandler, refreshInteractionList, tickHighlight } from './render/interaction-handler.js';
 
 import { installOverlayController, showMainMenu, closeOverlayById } from './ui/overlay-controller.js';
 import { mountInventoryPanel } from './ui/inventory-panel.js';
@@ -251,6 +251,17 @@ function _gameLoop(deltaMs) {
     // Settings sync: apply volume to audio manager.
     const { masterVolume } = state.settings;
     setMasterVolume(masterVolume);
+  }
+
+  // Per-frame hover highlight and floating label repositioning run every frame
+  // (not only while playing) so the scene responds during room transitions.
+  const camera = getCamera();
+  const renderer = getRenderer();
+  if (camera) {
+    tickHighlight(camera, _announce);
+  }
+  if (camera && renderer) {
+    updateItemLabels(camera, renderer);
   }
 }
 
