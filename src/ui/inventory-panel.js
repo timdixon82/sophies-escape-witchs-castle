@@ -167,7 +167,7 @@ function _showFeedback(message, type) {
   if (!feedbackEl) return;
 
   feedbackEl.textContent = message;
-  feedbackEl.className = `inventory-feedback inventory-feedback--${type}`;
+  feedbackEl.className = `inventory-feedback inventory-feedback-${type}`;
 
   // Clear after 4 seconds.
   setTimeout(() => {
