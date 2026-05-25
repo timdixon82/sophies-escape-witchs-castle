@@ -111,6 +111,20 @@ export function enterRoom(roomId) {
 }
 
 /**
+ * Rebuilds the current room in-place.
+ * Called when a puzzle is solved and the room geometry needs to update
+ * (e.g. to reveal a newly accessible item or change object colour).
+ */
+export function rebuildCurrentRoom() {
+  if (!_scene || !_currentRoomId) return;
+  const roomId = _currentRoomId;
+  _tearDownRoom();
+  _currentRoomId = roomId;
+  _buildRoom(roomId);
+  _updateRoomLabel(roomId);
+}
+
+/**
  * Returns the list of interactable meshes for the current room.
  * Used by the Raycaster in interaction-handler.js.
  * @returns {THREE.Mesh[]}
