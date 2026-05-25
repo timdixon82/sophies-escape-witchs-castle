@@ -133,6 +133,15 @@ export function getScene() {
   return _scene;
 }
 
+/**
+ * Returns the WebGL renderer so callers can read its dimensions and pass it
+ * to helpers such as updateItemLabels.
+ * @returns {THREE.WebGLRenderer | null}
+ */
+export function getRenderer() {
+  return _renderer;
+}
+
 // ─── Private helpers ──────────────────────────────────────────────────────────
 
 function _tick() {

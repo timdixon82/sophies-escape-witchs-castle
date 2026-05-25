@@ -1,5 +1,5 @@
 /**
- * Sophie's Escape — Room Manager (v0.2, ADR 001, ADR 002)
+ * Sophie's Escape — Room Manager (v0.3, ADR 001, ADR 002)
  *
  * Builds and tears down Three.js geometry for each game room.
  * All geometry is placeholder: BoxGeometry, PlaneGeometry, CylinderGeometry.
@@ -141,10 +141,56 @@ export function getCurrentRoomId() {
   return _currentRoomId;
 }
 
+/**
+ * Repositions the floating DOM labels for all item-type interactables.
+ * Call from the game loop each frame, after the camera matrices have been updated.
+ *
+ * Projects each item mesh's world position to screen coordinates using the
+ * camera's projection matrix. Hides the label when the item is behind the camera
+ * (projected Z > 1) or when no label element is present.
+ *
+ * @param {THREE.PerspectiveCamera} camera
+ * @param {THREE.WebGLRenderer} renderer
+ */
+export function updateItemLabels(camera, renderer) {
+  const size = renderer.getSize(new THREE.Vector2());
+  const halfW = size.x / 2;
+  const halfH = size.y / 2;
+
+  for (const mesh of _interactables) {
+    const labelEl = mesh.userData.labelEl;
+    if (!labelEl) continue;
+
+    // Project the mesh world position into NDC.
+    const pos = mesh.position.clone();
+    pos.project(camera);
+
+    // pos.z > 1 means the point is behind the camera's near/far range.
+    if (pos.z > 1) {
+      labelEl.style.display = 'none';
+      continue;
+    }
+
+    // Convert NDC to CSS pixel coordinates relative to the viewport.
+    const screenX = (pos.x + 1) * halfW;
+    const screenY = (-pos.y + 1) * halfH;
+
+    labelEl.style.display = 'block';
+    labelEl.style.left = `${Math.round(screenX)}px`;
+    labelEl.style.top = `${Math.round(screenY - 24)}px`; // 24px above the projected centre
+  }
+}
+
 // ─── Private: teardown ────────────────────────────────────────────────────────
 
 function _tearDownRoom() {
   for (const obj of _roomObjects) {
+    // Remove the floating DOM label if this object has one.
+    if (obj.userData && obj.userData.labelEl) {
+      obj.userData.labelEl.remove();
+      obj.userData.labelEl = null;
+    }
+
     _scene.remove(obj);
     // Dispose geometry and material to avoid GPU memory leaks.
     if (obj.geometry) obj.geometry.dispose();
@@ -280,6 +326,8 @@ function _addInteractable(mesh, id, label, type) {
 
 /**
  * Creates a glowing amber interactable item box.
+ * Also creates a floating DOM label (aria-hidden, visual only) and stores it
+ * on mesh.userData.labelEl so the render loop can reposition it each frame.
  */
 function _makeItemBox(pos, id, label) {
   const mesh = _makeBox(0.25, 0.25, 0.25, TOKEN_ACCENT_AMBER, pos, {
@@ -288,6 +336,26 @@ function _makeItemBox(pos, id, label) {
     roughness: 0.4,
   });
   _addInteractable(mesh, id, label, 'item');
+
+  // Floating HTML label — visual only; the keyboard nav list is the accessible form.
+  const labelEl = document.createElement('div');
+  labelEl.textContent = label;
+  labelEl.setAttribute('aria-hidden', 'true');
+  labelEl.style.cssText = [
+    'position:absolute',
+    'pointer-events:none',
+    'z-index:5',
+    'font:11px/1.4 system-ui,sans-serif',
+    'color:#f0eae0',
+    'background:rgba(0,0,0,0.6)',
+    'padding:2px 5px',
+    'border-radius:2px',
+    'white-space:nowrap',
+    'display:none',
+  ].join(';');
+  document.body.appendChild(labelEl);
+  mesh.userData.labelEl = labelEl;
+
   return mesh;
 }
 
