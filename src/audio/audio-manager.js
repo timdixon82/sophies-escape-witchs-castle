@@ -16,9 +16,11 @@
  */
 
 /** @type {number} */
+// eslint-disable-next-line no-unused-vars -- stub state; read by Howl.volume() in v0.2 (TODO line 38)
 let _masterVolume = 0.8;
 
 /** @type {boolean} */
+// eslint-disable-next-line no-unused-vars -- stub state; read by Howl.mute() in v0.2 (TODO line 47)
 let _muted = false;
 
 /**

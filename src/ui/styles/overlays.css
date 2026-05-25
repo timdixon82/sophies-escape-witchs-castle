@@ -47,14 +47,14 @@ dialog::backdrop {
   gap: 16px;
 }
 
-@media (min-width: 600px) {
+@media (width >= 600px) {
   .overlay-inner {
     padding: var(--space-panel-padding-desktop);
   }
 }
 
 /* Centred layout variant (pause screen). */
-.overlay-inner--centered {
+.overlay-inner-centered {
   align-items: center;
   text-align: center;
 }
@@ -230,7 +230,7 @@ dialog::backdrop {
   overflow-y: auto;
 }
 
-@media (max-width: 600px) {
+@media (width <= 600px) {
   #overlay-inventory[open] {
     top: auto;
     right: 0;
@@ -254,7 +254,7 @@ dialog::backdrop {
   gap: var(--space-item-gap);
 }
 
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .inventory-grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -358,14 +358,14 @@ dialog::backdrop {
   color: var(--fg-primary);
 }
 
-.inventory-feedback--error {
+.inventory-feedback-error {
   color: var(--status-error);
 
   /* --status-error on --bg-panel: 7.07:1 — passes AAA.
      MUST remain on --bg-panel, not --bg-panel-raised (6.35:1 fails). */
 }
 
-.inventory-feedback--success {
+.inventory-feedback-success {
   color: var(--status-success);
 
   /* --status-success on --bg-panel: 9.65:1 — passes AAA. */

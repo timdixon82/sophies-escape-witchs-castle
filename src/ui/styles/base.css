@@ -191,7 +191,7 @@ body {
 }
 
 /* Mobile: adjust positions and hide labels. */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .hud-btn-label {
     display: none;
   }

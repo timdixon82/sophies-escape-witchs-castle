@@ -101,14 +101,22 @@ function _render(state) {
 
 /**
  * Returns the active puzzle ID for the current room.
- * In v0.1 each room has at most one puzzle.
+ * v0.2: all ten rooms mapped.
  * @param {import('../core/state.js').GameState} state
  * @returns {string | null}
  */
 function _currentPuzzleId(state) {
   const roomPuzzleMap = {
     'dungeon-cell': 'cell-escape',
-    // Other rooms: TODO(v0.2) — populate when puzzle data is confirmed.
+    'stone-corridor': null,
+    kitchen: 'kitchen-cauldron',
+    library: 'library-cabinet',
+    'great-hall': 'great-hall-portrait',
+    chapel: 'chapel-altar',
+    armoury: 'armoury-chest',
+    'tower-room': 'tower-telescope',
+    'witchs-study': 'study-spell',
+    'castle-gate': 'gate-pedestals',
   };
   return roomPuzzleMap[state.currentRoomId] ?? null;
 }

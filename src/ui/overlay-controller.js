@@ -18,7 +18,7 @@
  */
 
 import { on } from '../render/input/intent-bus.js';
-import { dispatch, getState } from '../core/state.js';
+import { dispatch } from '../core/state.js';
 
 /** Stack of currently open overlay IDs (topmost last). */
 const _openStack = [];

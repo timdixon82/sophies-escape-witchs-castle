@@ -109,11 +109,13 @@ function _hideDiagnostics() {
 import { dispatch, subscribe, loadFromStorage, getState } from './core/state.js';
 import { shouldFireWitchEncounter } from './core/reducer.js';
 
-import { initEngine, startLoop, getCamera } from './render/engine.js';
+import { initEngine, startLoop, getCamera, getScene } from './render/engine.js';
 import { initFirstPersonController, updateFirstPersonController } from './render/first-person-controller.js';
 import { installKeyboardBridge } from './render/input/keyboard-bridge.js';
 import { installMouseBridge } from './render/input/mouse-bridge.js';
 import { installTouchBridge } from './render/input/touch-bridge.js';
+import { initRoomManager, enterRoom, rebuildCurrentRoom } from './render/room-manager.js';
+import { installInteractionHandler, refreshInteractionList } from './render/interaction-handler.js';
 
 import { installOverlayController, showMainMenu, closeOverlayById } from './ui/overlay-controller.js';
 import { mountInventoryPanel } from './ui/inventory-panel.js';
@@ -165,7 +167,19 @@ async function boot() {
   mountInventoryPanel();
   mountHintPanel();
   _logStep('UI layers installed');
-  _setLoadingProgress(90, 'UI ready.');
+  _setLoadingProgress(80, 'UI ready.');
+
+  // 6b. Initialise room manager and interaction handler.
+  _logStep('initialising room manager');
+  const scene = getScene();
+  if (scene) {
+    initRoomManager(scene);
+    installInteractionHandler(_announce);
+    // Build the initial room (dungeon-cell) before the render loop starts.
+    enterRoom('dungeon-cell');
+  }
+  _logStep('room manager initialised');
+  _setLoadingProgress(90, 'Rooms ready.');
 
   // 7. Check for a saved session.
   _logStep('loading from storage');
@@ -247,20 +261,24 @@ function _gameLoop(deltaMs) {
 function _onStateChange(state, prev) {
   // Room entry narration via ARIA live region.
   if (state.currentRoomId !== prev.currentRoomId) {
-    _announce(ROOM_DESCRIPTIONS[state.currentRoomId] ?? `You have entered a new room.`);
+    _announce(ROOM_DESCRIPTIONS[state.currentRoomId] ?? 'You have entered a new room.');
 
     // Track first room entry for analytics.
     if (!prev.roomsVisited.includes(state.currentRoomId)) {
       trackEvent('room-entered', state.currentRoomId);
     }
+
+    // Rebuild interaction list for new room.
+    refreshInteractionList(_announce);
   }
 
-  // Inventory change narration.
-  if (state.inventory.items.length > prev.inventory.items.length) {
-    const newItem = state.inventory.items[state.inventory.items.length - 1];
-    if (newItem) {
-      _announce(`You picked up: ${newItem.itemId.replace(/-/g, ' ')}.`);
-    }
+  // Puzzle solved — rebuild room to show newly-accessible items/objects.
+  const prevSolvedCount = Object.values(prev.puzzles).filter((p) => p.state === 'solved').length;
+  const newSolvedCount = Object.values(state.puzzles).filter((p) => p.state === 'solved').length;
+  if (newSolvedCount > prevSolvedCount) {
+    // Rebuild geometry for the current room with the updated puzzle state.
+    rebuildCurrentRoom();
+    refreshInteractionList(_announce);
   }
 
   // Win condition.
@@ -292,6 +310,11 @@ function _startNewGame() {
     if (joystickArea) joystickArea.hidden = false;
   }
 
+  // Rebuild Room 1 for the new game session (clears any prior play state
+  // that might have changed the room geometry).
+  rebuildCurrentRoom();
+  refreshInteractionList(_announce);
+
   // Move focus to the canvas after layout update so VoiceOver has a clear
   // landing point after the main menu dialog closes. Deferring by one task
   // (setTimeout 0) ensures the browser has completed layout before focus() is
@@ -315,10 +338,12 @@ function _announce(message) {
 }
 
 function _setLoadingProgress(percent, message) {
+  const bar = document.getElementById('loading-bar');
   const fill = document.getElementById('loading-bar-fill');
   const text = document.getElementById('loading-text');
+  // Update aria-valuenow on the progressbar element (not the fill div).
+  if (bar) bar.setAttribute('aria-valuenow', String(percent));
   if (fill) fill.style.width = `${percent}%`;
-  if (fill) fill.setAttribute('aria-valuenow', String(percent));
   if (text) text.textContent = message;
 }
 

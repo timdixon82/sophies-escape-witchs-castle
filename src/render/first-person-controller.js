@@ -42,6 +42,7 @@ let _pitch = 0; // radians, vertical
 let _camera = null;
 
 /** @type {MediaQueryList | null} */
+// eslint-disable-next-line no-unused-vars -- retained for v0.2: addEventListenter('change') will drive look-easing toggle
 let _reducedMotionQuery = null;
 
 let _lookDeltaUnsub = null;
