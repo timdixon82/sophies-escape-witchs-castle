@@ -155,6 +155,7 @@ function _onResize(canvas) {
   if (!_renderer || !_camera) return;
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
+  if (w === 0 || h === 0) return;
   _renderer.setSize(w, h);
   _camera.aspect = w / h;
   _camera.updateProjectionMatrix();
