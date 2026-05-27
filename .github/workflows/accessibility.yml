@@ -50,6 +50,9 @@ jobs:
       - name: Install matching Chrome and ChromeDriver versions
         run: npx browser-driver-manager install chrome
 
+      - name: Set PUPPETEER_EXECUTABLE_PATH for Pa11y
+        run: echo "PUPPETEER_EXECUTABLE_PATH=$CHROME_TEST_PATH" >> $GITHUB_ENV
+
       - name: Serve the built site
         run: python3 -m http.server 8080 --directory dist &
 
