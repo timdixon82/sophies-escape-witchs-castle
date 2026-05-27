@@ -1,0 +1,205 @@
+/**
+ * Sophie's Escape: The Witch's Castle — Design Tokens
+ *
+ * Source of truth: docs/design-system/tokens.md (Simon, 2026-05-23).
+ * This file converts those tokens to CSS custom properties.
+ *
+ * This game does NOT use the Tim Dixon Design System palette.
+ * See docs/design-system.md "Which projects use this design system".
+ *
+ * All contrast ratios are documented inline. AAA requires 7:1 for
+ * normal text and 4.5:1 for large text (18px+ or 14px bold+).
+ * WCAG 2.4.13 Focus Appearance (AAA) requires 3:1 for focus indicators.
+ *
+ * Forbidden pairings are documented at the end of this file.
+ */
+
+:root {
+  /* ================================================================
+     Background tokens
+     ================================================================ */
+
+  /* Page background behind the 3D canvas. Not a text surface. */
+  --bg-canvas: #0a0a0a; /* luminance: 0.00304 */
+
+  /* Primary surface for all UI panels: inventory, hints, pause, menus.
+     Dark warm charcoal with an amber undertone. */
+  --bg-panel: #1e1b16; /* luminance: 0.01117 */
+
+  /* Slightly lighter; used for list items, selected states, insets. */
+  --bg-panel-raised: #28241e; /* luminance: 0.01807 */
+
+  /* Semi-transparent scrim between 3D canvas and full-screen overlays.
+     Treated as #0a0a0a for contrast purposes (always over dark canvas). */
+  --bg-overlay-scrim: rgb(10 10 10 / 85%);
+
+  /* ================================================================
+     Foreground tokens
+     ================================================================ */
+
+  /* Primary reading colour. All body text, labels, inventory item names.
+     Contrast on --bg-panel: 14.34:1 (AAA).
+     Contrast on --bg-panel-raised: 12.89:1 (AAA).
+     Contrast on --bg-overlay-scrim: 16.54:1 (AAA). */
+  --fg-primary: #f0eae0; /* luminance: 0.8271 */
+
+  /* Secondary labels, subheadings, puzzle progress indicators.
+     Contrast on --bg-panel: 9.31:1 (AAA).
+     Contrast on --bg-panel-raised: 8.39:1 (AAA). */
+  --fg-secondary: #c8bea8; /* luminance: 0.5195 */
+
+  /* Label colour for disabled interactive controls ONLY.
+     Contrast on --bg-panel: 3.47:1.
+     MUST only be used with aria-disabled="true" or the disabled attribute.
+     Do NOT use for any non-disabled text — fails AAA. */
+  --fg-disabled: #6a6258; /* luminance: 0.14778 */
+
+  /* ================================================================
+     Accent tokens
+     ================================================================ */
+
+  /* Amber torch light. Primary accent: headings, selected states, focus ring.
+     Contrast on --bg-panel: 8.46:1 (AAA).
+     Contrast on --bg-panel-raised: 7.61:1 (AAA).
+     Contrast on --bg-canvas: 9.66:1 (AAA).
+     As button background, black text: 10.35:1 (AAA). */
+  --accent-amber: #ffa040; /* luminance: 0.4677 */
+
+  /* Pastel purple. Hint labels, combine-result messages, witch dialogue.
+     Saturated purple (#9b59ff) fails AAA at 4.31:1 — do not use as text.
+     Contrast on --bg-panel: 8.00:1 (AAA).
+     Contrast on --bg-panel-raised: 7.19:1 (AAA). */
+  --accent-purple: #c89eff; /* luminance: 0.4396 */
+
+  /* Sage green. Success states, puzzle-solved feedback.
+     Contrast on --bg-panel: 9.65:1 (AAA).
+     Contrast on --bg-panel-raised: 8.67:1 (AAA). */
+  --accent-green: #7ed4a0; /* luminance: 0.5404 */
+
+  /* ================================================================
+     Status tokens
+     ================================================================ */
+
+  /* Warm soft red. Invalid-combination messages, error states.
+     Contrast on --bg-panel: 7.07:1 (AAA) — approved pairing.
+     MUST NOT be placed on --bg-panel-raised: 6.35:1 (FAILS AAA). */
+  --status-error: #ff8080; /* luminance: 0.3827 */
+
+  /* Alias of --accent-green for success contexts. */
+  --status-success: #7ed4a0;
+
+  /* Alias of --accent-purple for informational messages. */
+  --status-info: #c89eff;
+
+  /* ================================================================
+     Typography tokens
+     ================================================================ */
+
+  /* All UI text: menus, overlays, inventory, hints, buttons. */
+  --font-ui: "Roboto", -apple-system, blinkmacsystemfont, "Segoe UI",
+    "Helvetica Neue", arial, sans-serif;
+
+  /* Atmospheric display text: witch dialogue, room entry titles.
+     Fallback pending Tim's decision D2. */
+  --font-display: "Georgia", "Times New Roman", serif;
+
+  /* ================================================================
+     Type scale tokens
+     ================================================================ */
+
+  /* Body text / inventory labels / hint text */
+  --text-body-size: 16px;
+  --text-body-weight: 400;
+  --text-body-line-height: 1.6;
+
+  /* Button labels */
+  --text-button-weight: 700;
+
+  /* Secondary labels — at the lower size boundary for AAA */
+  --text-secondary-size: 14px;
+  --text-secondary-line-height: 1.5;
+
+  /* Overlay headings (H2) */
+  --text-heading-section-size: 20px;
+  --text-heading-section-weight: 700;
+  --text-heading-section-line-height: 1.4;
+
+  /* Dialog/overlay titles (H1 within a dialog) */
+  --text-heading-panel-size: 24px;
+  --text-heading-panel-weight: 900;
+  --text-heading-panel-line-height: 1.3;
+
+  /* Game title on loading screen and main menu */
+  --text-game-title-size: 28px;
+  --text-game-title-weight: 900;
+  --text-game-title-line-height: 1.2;
+
+  /* ================================================================
+     Text spacing (WCAG 2.2 criterion 1.4.12 Text Spacing)
+     Set as custom properties so user stylesheets can override.
+     ================================================================ */
+
+  --text-letter-spacing: 0.12em;
+  --text-word-spacing: 0.16em;
+
+  /* ================================================================
+     Spacing tokens
+     ================================================================ */
+
+  /* Minimum touch target size: 44px (WCAG 2.5.5 Target Size Enhanced, AAA). */
+  --space-touch-target: 44px;
+
+  /* Minimum gap between adjacent touch targets (prevents 44px areas overlapping). */
+  --space-touch-gap: 8px;
+
+  /* Inner padding for panel and dialog surfaces. */
+  --space-panel-padding-mobile: 16px;
+  --space-panel-padding-desktop: 24px;
+
+  /* Gap between inventory item cards. */
+  --space-item-gap: 12px;
+
+  /* ================================================================
+     Border and focus tokens
+     ================================================================ */
+
+  /* Subtle panel border — visual separation only, does not convey information. */
+  --border-panel: 1px solid #3a3328;
+
+  /* Selected inventory item border. */
+  --border-selected: 2px solid var(--accent-amber);
+
+  /* Focus ring: 3px amber, 2px offset.
+     Contrast of amber on --bg-panel: 8.46:1 (exceeds 3:1 WCAG 2.4.13 AAA).
+     Offset ensures ring is not hidden by the element background.
+     Applied globally via :focus-visible below. */
+  --focus-ring-width: 3px;
+  --focus-ring-color: var(--accent-amber);
+  --focus-ring-offset: 2px;
+
+  /* ================================================================
+     Animation tokens (reduced-motion override applied in media query below)
+     ================================================================ */
+
+  /* Slide transitions for inventory and other panels. */
+  --transition-panel: 0.25s ease-in-out;
+
+  /* Fade transitions for dialogs. */
+  --transition-fade: 0.15s ease;
+}
+
+/* Reduced-motion override: instant transitions when user prefers reduced motion.
+   Satisfies WCAG 2.3.3 Animation from Interactions (AAA) and NFR-ACC-03. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-panel: 0s;
+    --transition-fade: 0s;
+  }
+}
+
+/* ================================================================
+   FORBIDDEN PAIRINGS (documented to prevent future regressions)
+   -- status-error on --bg-panel-raised: 6.35:1 — FAILS AAA.
+   -- Saturated purple (#9b59ff) as text: 4.31:1 on --bg-panel — FAILS AAA.
+   -- --fg-disabled as body text: 3.47:1 — only on disabled control labels.
+   ================================================================ */

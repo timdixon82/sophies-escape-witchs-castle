@@ -1,0 +1,500 @@
+/**
+ * Sophie's Escape: The Witch's Castle — Overlay styles
+ *
+ * All overlay dialogs share these base styles.
+ * Specific overlays extend them via ID selectors.
+ *
+ * Contrast ratios are documented per token in tokens.css.
+ * All text here uses pairings that pass AAA (7:1 normal, 4.5:1 large).
+ */
+
+/* ================================================================
+   Dialog base styles
+   Overlays are <dialog> elements. The UA sheet hides them; we show
+   them only when the JS open attribute is set.
+   ================================================================ */
+
+dialog {
+  /* Reset UA dialog chrome. */
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--fg-primary);
+
+  /* --fg-primary on --bg-panel: 14.34:1 — passes AAA. */
+  font-family: var(--font-ui);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  max-width: 100vw;
+  max-height: 100dvh;
+  overflow: auto;
+}
+
+/* Backdrop for dialogs: semi-transparent scrim between canvas and overlay. */
+dialog::backdrop {
+  background-color: var(--bg-overlay-scrim);
+}
+
+/* Inner container — provides the panel surface and padding. */
+.overlay-inner {
+  background-color: var(--bg-panel);
+  border: var(--border-panel);
+  border-radius: 8px;
+  padding: var(--space-panel-padding-mobile);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (width >= 600px) {
+  .overlay-inner {
+    padding: var(--space-panel-padding-desktop);
+  }
+}
+
+/* Centred layout variant (pause screen). */
+.overlay-inner-centered {
+  align-items: center;
+  text-align: center;
+}
+
+/* Overlay header row: title + close button. */
+.overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Overlay title / heading.
+   --accent-amber on --bg-panel: 8.46:1 — passes AAA. */
+.overlay-title {
+  font-size: var(--text-heading-panel-size);
+  font-weight: var(--text-heading-panel-weight);
+  line-height: var(--text-heading-panel-line-height);
+  color: var(--accent-amber);
+}
+
+/* Close button — 44×44 minimum touch target. */
+.overlay-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--space-touch-target);
+  min-height: var(--space-touch-target);
+  background: none;
+  border: var(--border-panel);
+  border-radius: 4px;
+  color: var(--fg-secondary);
+
+  /* --fg-secondary on --bg-panel: 9.31:1 — passes AAA. */
+  cursor: pointer;
+  transition: background-color var(--transition-fade), color var(--transition-fade);
+  flex-shrink: 0;
+}
+
+.overlay-close-btn:hover,
+.overlay-close-btn:focus-visible {
+  background-color: var(--accent-amber);
+  color: #000;
+
+  /* black on --accent-amber: 10.35:1 — passes AAA. */
+}
+
+/* ================================================================
+   Main menu overlay
+   Full-screen modal. z-index 50 ensures it sits above HUD.
+   ================================================================ */
+
+#overlay-main-menu[open] {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#overlay-main-menu .overlay-inner {
+  width: min(480px, calc(100% - 32px));
+  align-items: center;
+  text-align: center;
+}
+
+.overlay-subtitle {
+  color: var(--fg-secondary);
+
+  /* --fg-secondary on --bg-panel: 9.31:1 — passes AAA. */
+  font-size: var(--text-body-size);
+}
+
+/* ================================================================
+   Menu lists (main menu and pause menu)
+   ================================================================ */
+
+.menu-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-touch-gap);
+  width: 100%;
+}
+
+.menu-btn {
+  display: block;
+  width: 100%;
+  min-height: var(--space-touch-target);
+  padding: 10px 24px;
+  background-color: var(--bg-panel-raised);
+  color: var(--fg-primary);
+
+  /* --fg-primary on --bg-panel-raised: 12.89:1 — passes AAA. */
+  border: 2px solid var(--bg-panel-raised);
+  border-radius: 4px;
+  font-family: var(--font-ui);
+  font-size: var(--text-body-size);
+  font-weight: var(--text-button-weight);
+  cursor: pointer;
+  transition: background-color var(--transition-fade), color var(--transition-fade),
+    border-color var(--transition-fade);
+  min-width: 200px;
+}
+
+.menu-btn:hover,
+.menu-btn:focus-visible {
+  background-color: var(--accent-amber);
+  color: #000;
+
+  /* black on --accent-amber: 10.35:1 — passes AAA. */
+  border-color: var(--accent-amber);
+}
+
+/* Primary button: amber border for visual distinction. */
+.menu-btn-primary {
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+
+  /* --accent-amber on --bg-panel-raised: 7.61:1 — passes AAA. */
+}
+
+.menu-btn-primary:hover,
+.menu-btn-primary:focus-visible {
+  background-color: var(--accent-amber);
+  color: #000;
+}
+
+.menu-footer {
+  margin-top: 8px;
+}
+
+.menu-footer-text {
+  font-size: var(--text-secondary-size);
+  color: var(--fg-secondary);
+
+  /* --fg-secondary on --bg-panel: 9.31:1 — passes AAA. */
+  line-height: var(--text-secondary-line-height);
+}
+
+.menu-footer-text a {
+  color: var(--accent-purple);
+
+  /* --accent-purple on --bg-panel: 8.00:1 — passes AAA. */
+  text-decoration: underline;
+}
+
+/* ================================================================
+   Inventory overlay
+   Slides in from the right on desktop (width 320px), from the bottom
+   on mobile (full width, up to 60% screen height). Respects
+   prefers-reduced-motion via --transition-panel (0s when reduced).
+   ================================================================ */
+
+#overlay-inventory[open] {
+  position: fixed;
+  z-index: 40;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+#overlay-inventory .overlay-inner {
+  height: 100%;
+  border-radius: 0;
+  border-right: none;
+  border-top: none;
+  border-bottom: none;
+  overflow-y: auto;
+}
+
+@media (width <= 600px) {
+  #overlay-inventory[open] {
+    top: auto;
+    right: 0;
+    left: 0;
+    width: 100%;
+    height: 60dvh;
+    max-height: 60dvh;
+  }
+
+  #overlay-inventory .overlay-inner {
+    border-radius: 8px 8px 0 0;
+    border: var(--border-panel);
+    border-bottom: none;
+  }
+}
+
+/* Inventory grid */
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-item-gap);
+}
+
+@media (width <= 600px) {
+  .inventory-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.inventory-empty {
+  grid-column: 1 / -1;
+  color: var(--fg-secondary);
+
+  /* --fg-secondary on --bg-panel: 9.31:1 — passes AAA. */
+  text-align: center;
+  padding: 24px 0;
+}
+
+/* Inventory item card.
+   Uses <button> with aria-pressed for select toggle. */
+.inventory-item-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  aspect-ratio: 1;
+  padding: 8px;
+  background-color: var(--bg-panel-raised);
+  color: var(--fg-primary);
+
+  /* --fg-primary on --bg-panel-raised: 12.89:1 — passes AAA. */
+  border: 2px solid transparent;
+  border-radius: 4px;
+  font-family: var(--font-ui);
+  font-size: var(--text-secondary-size);
+  cursor: pointer;
+  transition: border-color var(--transition-fade), background-color var(--transition-fade);
+  min-height: var(--space-touch-target);
+}
+
+.inventory-item-btn:hover,
+.inventory-item-btn:focus-visible {
+  border-color: var(--accent-amber);
+}
+
+/* Selected state: amber border. Visual cue for sighted users.
+   aria-pressed="true" communicates state to screen readers. */
+.inventory-item-btn[aria-pressed="true"] {
+  border-color: var(--accent-amber);
+  background-color: var(--bg-panel);
+}
+
+.inventory-item-name {
+  font-size: var(--text-secondary-size);
+  text-align: center;
+  word-break: break-word;
+}
+
+/* Combine and other action buttons */
+.inventory-actions {
+  display: flex;
+  gap: var(--space-touch-gap);
+  justify-content: flex-end;
+}
+
+.action-btn {
+  min-height: var(--space-touch-target);
+  min-width: 100px;
+  padding: 8px 16px;
+  background-color: var(--bg-panel-raised);
+  color: var(--fg-primary);
+
+  /* --fg-primary on --bg-panel-raised: 12.89:1 — passes AAA. */
+  border: 2px solid var(--accent-amber);
+  border-radius: 4px;
+  font-family: var(--font-ui);
+  font-size: var(--text-body-size);
+  font-weight: var(--text-button-weight);
+  cursor: pointer;
+  transition: background-color var(--transition-fade), color var(--transition-fade);
+}
+
+.action-btn:hover,
+.action-btn:focus-visible {
+  background-color: var(--accent-amber);
+  color: #000;
+
+  /* black on --accent-amber: 10.35:1 — passes AAA. */
+}
+
+.action-btn:disabled {
+  border-color: var(--fg-disabled);
+  color: var(--fg-disabled);
+
+  /* --fg-disabled: only for disabled controls alongside disabled attribute. */
+  cursor: not-allowed;
+  background-color: var(--bg-panel-raised);
+}
+
+/* Inventory feedback live region. */
+.inventory-feedback {
+  font-size: var(--text-body-size);
+  min-height: 1.6em;
+  color: var(--fg-primary);
+}
+
+.inventory-feedback-error {
+  color: var(--status-error);
+
+  /* --status-error on --bg-panel: 7.07:1 — passes AAA.
+     MUST remain on --bg-panel, not --bg-panel-raised (6.35:1 fails). */
+}
+
+.inventory-feedback-success {
+  color: var(--status-success);
+
+  /* --status-success on --bg-panel: 9.65:1 — passes AAA. */
+}
+
+/* ================================================================
+   Hint overlay
+   Centred dialog, max-width 480px.
+   ================================================================ */
+
+#overlay-hint[open] {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#overlay-hint .overlay-inner {
+  width: min(480px, calc(100% - 32px));
+}
+
+.hint-step-label {
+  font-size: var(--text-secondary-size);
+  color: var(--fg-secondary);
+
+  /* --fg-secondary on --bg-panel: 9.31:1 — passes AAA. */
+  line-height: var(--text-secondary-line-height);
+}
+
+.hint-text-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hint-text {
+  color: var(--fg-primary);
+
+  /* --fg-primary on --bg-panel: 14.34:1 — passes AAA. */
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+}
+
+.hint-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ================================================================
+   Pause overlay
+   Full-screen centred modal.
+   ================================================================ */
+
+#overlay-pause[open] {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#overlay-pause .overlay-inner {
+  width: min(360px, calc(100% - 32px));
+  align-items: center;
+}
+
+#overlay-pause .menu-list {
+  width: 100%;
+}
+
+/* ================================================================
+   Help overlay
+   Centred dialog, max-width 560px, scrollable when content
+   exceeds viewport height.
+   ================================================================ */
+
+#overlay-help[open] {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+#overlay-help .overlay-inner {
+  width: min(560px, calc(100% - 32px));
+
+  /* Allow inner panel to grow taller than viewport; the dialog scrolls. */
+  max-height: none;
+}
+
+/* Inner panel variant for help: no centred alignment, text reads left. */
+.overlay-inner-help {
+  align-items: stretch;
+}
+
+/* Help content container */
+.help-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Section heading within the help overlay */
+.help-section-heading {
+  font-size: var(--text-body-size);
+  font-weight: var(--text-button-weight);
+  color: var(--accent-amber);
+
+  /* --accent-amber on --bg-panel: 8.46:1 — passes AAA. */
+  margin-bottom: 8px;
+}
+
+/* Help bullet lists */
+.help-list {
+  list-style: disc;
+  padding-inline-start: 1.25em;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--fg-primary);
+
+  /* --fg-primary on --bg-panel: 14.34:1 — passes AAA. */
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+}

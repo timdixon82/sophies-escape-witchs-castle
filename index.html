@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!--
+      Content Security Policy (ADR 007).
+      'wasm-unsafe-eval' is present from day one — it is required for Three.js
+      WebAssembly modules and avoids the painful retrofit ICCC had in Q67.
+      'unsafe-inline' on style-src is a tracked interim relaxation; it will be
+      removed before the 1.0 release once Sean's CSS audit is complete.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; connect-src 'self' https://timdixon82.goatcounter.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests;" />
+
+    <!-- Referrer policy — delivered as meta because GitHub Pages cannot send headers. -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <!--
+      DEV-ONLY cache-busting headers.
+      iPhone Safari aggressively caches assets during development.
+      These tags prevent stale bundles being served on hard refresh.
+      TODO: remove in the v1.0 hardening pass before production deployment.
+    -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <title>Sophie's Escape: The Witch's Castle</title>
+    <meta name="description" content="Sophie is trapped in an ancient witch's castle. Explore ten interconnected rooms, collect items, solve puzzles, and escape — if you can." />
+
+    <link rel="icon" type="image/svg+xml" href="/sophies-escape-witchs-castle/favicon.svg" />
+    <link rel="stylesheet" href="/src/ui/styles/tokens.css" />
+    <link rel="stylesheet" href="/src/ui/styles/base.css" />
+    <link rel="stylesheet" href="/src/ui/styles/overlays.css" />
+  </head>
+  <body>
+    <!-- Loading screen — visible until the game initialises. -->
+    <div
+      id="loading-screen"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading Sophie's Escape"
+    >
+      <p class="game-title">Sophie's Escape: The Witch's Castle</p>
+      <p id="loading-text">Loading — please wait.</p>
+      <div
+        id="loading-bar"
+        role="progressbar"
+        aria-valuenow="0"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-label="Loading progress"
+      >
+        <div id="loading-bar-fill"></div>
+      </div>
+    </div>
+
+    <!-- Main content area (S-09: page must have a <main> landmark). -->
+    <main id="game-main">
+
+    <!-- 3D canvas — the Three.js renderer writes into this element.
+         role="application" + aria-label let screen readers know this is an
+         interactive application area. ARIA live region narrates game state.
+         Canvas screen-reader exception SE-001 is documented in docs/accessibility.md. -->
+    <canvas
+      id="game-canvas"
+      role="application"
+      aria-label="Sophie's Escape game view. Use keyboard controls or on-screen buttons to play."
+      tabindex="0"
+      hidden
+    ></canvas>
+
+    <!-- ARIA live region for game state announcements.
+         Announces: room entries, item pickups, puzzle state changes, witch encounters.
+         Polite: does not interrupt ongoing speech. -->
+    <div
+      id="game-announcer"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      class="sr-only"
+    ></div>
+
+    <!-- Permanent HUD buttons — visible during gameplay, hidden at menus/loading. -->
+    <div id="hud" hidden>
+      <!-- Inventory toggle: bottom-right desktop, bottom-centre mobile. -->
+      <button
+        type="button"
+        id="hud-inventory-btn"
+        aria-label="Open inventory"
+        aria-expanded="false"
+        aria-controls="overlay-inventory"
+        class="hud-btn"
+      >
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <path d="M16 10a4 4 0 0 1-8 0"/>
+        </svg>
+        <span class="hud-btn-label">Inventory</span>
+      </button>
+
+      <!-- Hint button. -->
+      <button
+        type="button"
+        id="hud-hint-btn"
+        aria-label="Show hint"
+        aria-expanded="false"
+        aria-controls="overlay-hint"
+        class="hud-btn"
+      >
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span class="hud-btn-label">Hint</span>
+      </button>
+
+      <!-- Pause button. -->
+      <button
+        type="button"
+        id="hud-pause-btn"
+        aria-label="Pause game"
+        aria-expanded="false"
+        aria-controls="overlay-pause"
+        class="hud-btn"
+      >
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="6" y="4" width="4" height="16"/>
+          <rect x="14" y="4" width="4" height="16"/>
+        </svg>
+        <span class="hud-btn-label">Pause</span>
+      </button>
+
+      <!-- Help button. -->
+      <button
+        type="button"
+        id="hud-help-btn"
+        aria-label="Help — how to play"
+        aria-expanded="false"
+        aria-controls="overlay-help"
+        class="hud-btn"
+      >
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <circle cx="12" cy="17" r="0.5" fill="currentColor"/>
+        </svg>
+        <span class="hud-btn-label">Help</span>
+      </button>
+    </div>
+
+    <!-- Touch joystick (shown only on touch devices during gameplay). -->
+    <div id="touch-joystick-area" hidden aria-hidden="true">
+      <div id="touch-joystick-base">
+        <div id="touch-joystick-knob"></div>
+      </div>
+    </div>
+
+    </main><!-- end #game-main -->
+
+    <!-- ================================================================
+         OVERLAY SHELLS
+         Each overlay is a <dialog> with role="dialog", aria-modal="true",
+         and aria-labelledby pointing to its heading.
+         Focus management is handled by src/ui/overlay-controller.js.
+         ================================================================ -->
+
+    <!-- Main menu overlay -->
+    <dialog
+      id="overlay-main-menu"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="main-menu-heading"
+    >
+      <div class="overlay-inner">
+        <h1 id="main-menu-heading" class="overlay-title">Sophie's Escape: The Witch's Castle</h1>
+        <p class="overlay-subtitle">A first-person puzzle adventure</p>
+        <nav aria-label="Main menu">
+          <ul class="menu-list">
+            <li>
+              <button type="button" id="btn-new-game" class="menu-btn menu-btn-primary">
+                New Game
+              </button>
+            </li>
+          </ul>
+        </nav>
+        <footer class="menu-footer">
+          <p class="menu-footer-text">
+            Privacy: this game uses
+            <a
+              href="https://www.goatcounter.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >GoatCounter</a>
+            (cookieless analytics). No personal data is stored.
+          </p>
+        </footer>
+      </div>
+    </dialog>
+
+    <!-- Inventory overlay -->
+    <dialog
+      id="overlay-inventory"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="inventory-heading"
+    >
+      <div class="overlay-inner">
+        <div class="overlay-header">
+          <h2 id="inventory-heading" class="overlay-title">Inventory</h2>
+          <button
+            type="button"
+            class="overlay-close-btn"
+            aria-label="Close inventory"
+            data-overlay-close="overlay-inventory"
+          >
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Item grid. Populated by src/ui/inventory-panel.js. -->
+        <div id="inventory-grid" class="inventory-grid" role="list" aria-label="Collected items">
+          <p id="inventory-empty-msg" class="inventory-empty">
+            You have not found any items yet.
+          </p>
+        </div>
+
+        <!-- Combine button — enabled only when two or more items are selected. -->
+        <div class="inventory-actions">
+          <button
+            type="button"
+            id="btn-combine"
+            class="action-btn"
+            disabled
+            aria-label="Combine selected items"
+          >
+            Combine
+          </button>
+        </div>
+
+        <!-- Live region for combination results. -->
+        <div
+          id="inventory-feedback"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          class="inventory-feedback"
+        ></div>
+      </div>
+    </dialog>
+
+    <!-- Hint overlay -->
+    <dialog
+      id="overlay-hint"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="hint-heading"
+    >
+      <div class="overlay-inner">
+        <div class="overlay-header">
+          <h2 id="hint-heading" class="overlay-title">Hint for this puzzle</h2>
+          <button
+            type="button"
+            class="overlay-close-btn"
+            aria-label="Close hint"
+            data-overlay-close="overlay-hint"
+          >
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Hint step annotation (e.g. "Hint 1 of 3"). -->
+        <p id="hint-step-label" class="hint-step-label"></p>
+
+        <!-- Hint text container — steps revealed progressively. -->
+        <div id="hint-text-container" class="hint-text-container">
+          <p id="hint-text" class="hint-text">No hints available in this room yet.</p>
+        </div>
+
+        <!-- Live region for new hint text announcements. -->
+        <div
+          id="hint-announcer"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          class="sr-only"
+        ></div>
+
+        <!-- Show next hint button — hidden after all hints revealed. -->
+        <div class="hint-actions">
+          <button
+            type="button"
+            id="btn-show-next-hint"
+            class="action-btn"
+            hidden
+            aria-label="Show next hint"
+          >
+            Show next hint
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Pause overlay -->
+    <dialog
+      id="overlay-pause"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pause-heading"
+    >
+      <div class="overlay-inner overlay-inner-centered">
+        <h2 id="pause-heading" class="overlay-title">Game Paused</h2>
+        <nav aria-label="Pause menu">
+          <ul class="menu-list">
+            <li>
+              <button
+                type="button"
+                id="btn-resume"
+                class="menu-btn menu-btn-primary"
+                aria-label="Resume game"
+              >
+                Resume
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                id="btn-pause-hint"
+                class="menu-btn"
+                aria-label="Show hint for current puzzle"
+              >
+                Hint
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                id="btn-quit-to-menu"
+                class="menu-btn"
+                aria-label="Exit to main menu"
+              >
+                Exit to Main Menu
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </dialog>
+
+    <!-- Help overlay -->
+    <dialog
+      id="overlay-help"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="help-heading"
+    >
+      <div class="overlay-inner overlay-inner-help">
+        <div class="overlay-header">
+          <h2 id="help-heading" class="overlay-title">How to Play</h2>
+          <button
+            type="button"
+            class="overlay-close-btn"
+            aria-label="Close help"
+            data-overlay-close="overlay-help"
+          >
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="help-content">
+          <section aria-labelledby="help-moving-heading">
+            <h3 id="help-moving-heading" class="help-section-heading">Moving and looking</h3>
+            <ul class="help-list">
+              <li>Arrow keys or W, A, S, D to move</li>
+              <li>Mouse drag or pointer lock to look around</li>
+              <li>On touch screens: drag to look, on-screen joystick to move (coming soon)</li>
+            </ul>
+          </section>
+
+          <section aria-labelledby="help-pickup-heading">
+            <h3 id="help-pickup-heading" class="help-section-heading">Picking up items</h3>
+            <ul class="help-list">
+              <li>Press Enter or E when facing a glowing amber object to pick it up</li>
+              <li>Or use the keyboard list at the bottom of the screen: Tab to reach it, Enter to activate</li>
+            </ul>
+          </section>
+
+          <section aria-labelledby="help-using-heading">
+            <h3 id="help-using-heading" class="help-section-heading">Using items</h3>
+            <ul class="help-list">
+              <li>Open your inventory with the Inventory button (bottom right) or press I</li>
+              <li>Select an item, then press Enter on a puzzle object in the room to use the item on it</li>
+            </ul>
+          </section>
+
+          <section aria-labelledby="help-combining-heading">
+            <h3 id="help-combining-heading" class="help-section-heading">Combining items</h3>
+            <ul class="help-list">
+              <li>In the inventory, select one item then select another</li>
+              <li>Press the Combine button to combine them</li>
+            </ul>
+          </section>
+
+          <section aria-labelledby="help-hints-heading">
+            <h3 id="help-hints-heading" class="help-section-heading">Hints</h3>
+            <ul class="help-list">
+              <li>Press the Hint button (bottom left) or press H for a hint about the current room</li>
+              <li>Three hints are available per room, from subtle to direct</li>
+            </ul>
+          </section>
+
+          <section aria-labelledby="help-pausing-heading">
+            <h3 id="help-pausing-heading" class="help-section-heading">Pausing</h3>
+            <ul class="help-list">
+              <li>Press the Pause button (top right) or press Escape to pause</li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </dialog>
+
+    <!--
+      Pre-module diagnostic script.
+      This runs as a classic (non-module) script so it executes even when the
+      ES module loader fails completely on iOS Safari (syntax error, import
+      resolution failure, CSP violation, top-level await rejection).
+      The module block below this is where all that can go wrong; this block
+      is the canary that must run first.
+
+      Language level: iOS Safari 14.5 safe — var, function declarations,
+      no arrow functions in top-level code, no template literals, no optional
+      chaining, no nullish coalescing.
+    -->
+    <script>
+      /* jshint esversion: 5 */
+      (function () {
+        'use strict';
+
+        // ── 1. Visually-hidden live region for immediate screen-reader announcements ──
+        // This region is always present in the DOM. When an error occurs the message
+        // is written here so VoiceOver and JAWS hear it immediately, even when the
+        // diagnostic panel is collapsed.
+        var diagLive = document.createElement('div');
+        diagLive.id = 'diag-live';
+        diagLive.setAttribute('role', 'alert');
+        diagLive.setAttribute('aria-live', 'assertive');
+        diagLive.setAttribute('aria-atomic', 'true');
+        diagLive.style.cssText =
+          'position:absolute;width:1px;height:1px;overflow:hidden;' +
+          'clip:rect(0,0,0,0);white-space:nowrap;';
+        document.body.appendChild(diagLive);
+
+        // ── 2. Diagnostics toggle button (top-left icon) ─────────────────────
+        // Shown immediately as a small fixed icon. Hides on clean boot.
+        var diagToggle = document.createElement('button');
+        diagToggle.id = 'diag-toggle';
+        diagToggle.type = 'button';
+        diagToggle.setAttribute('aria-expanded', 'false');
+        diagToggle.setAttribute('aria-controls', 'boot-diagnostic');
+        diagToggle.setAttribute('aria-label', 'Diagnostics');
+        diagToggle.style.cssText =
+          'position:fixed;top:0.5rem;left:0.5rem;z-index:10000;width:44px;height:44px;' +
+          'background:#1a0000;color:#ffcccc;border:1px solid #ff6666;border-radius:4px;' +
+          'font:1.2rem/1 system-ui,sans-serif;cursor:pointer;display:block;';
+        diagToggle.textContent = 'ⓘ';
+        document.body.appendChild(diagToggle);
+
+        // ── 3. Diagnostic panel (collapsed by default) ───────────────────────
+        var diagEl = document.createElement('div');
+        diagEl.id = 'boot-diagnostic';
+        diagEl.setAttribute('role', 'log');
+        diagEl.setAttribute('aria-label', 'Boot diagnostics');
+        // Inline styles so the panel is visible regardless of CSS load state.
+        diagEl.style.cssText =
+          'position:fixed;top:3rem;left:0.5rem;width:min(90vw,400px);background:#1a0000;' +
+          'color:#ffcccc;font:0.9rem/1.5 system-ui,sans-serif;padding:1rem;z-index:9999;' +
+          'display:none;word-break:break-word;max-height:50vh;overflow-y:auto;' +
+          'border:1px solid #ff6666;border-radius:4px;';
+        document.body.appendChild(diagEl);
+
+        // ── 4. Toggle button click handler ───────────────────────────────────
+        diagToggle.onclick = function () {
+          if (diagEl.style.display === 'none') {
+            diagEl.style.display = 'block';
+            diagToggle.setAttribute('aria-expanded', 'true');
+          } else {
+            diagEl.style.display = 'none';
+            diagToggle.setAttribute('aria-expanded', 'false');
+          }
+        };
+
+        // ── 5. Canary line ────────────────────────────────────────────────────
+        // Appended to the collapsed panel. The toggle button is already visible
+        // as the small icon. The panel itself stays collapsed (display:none) so
+        // it does not obstruct gameplay on a clean boot.
+        var canary = document.createElement('p');
+        canary.style.margin = '0';
+        canary.textContent = 'Diagnostic: script executing.';
+        diagEl.appendChild(canary);
+
+        // ── 6. Helper: write an error message to the panel and announce it ────
+        // Also auto-expands the panel so Tim can see the message without having
+        // to activate the toggle button first.
+        function showBootMessage(message, isError) {
+          var loadingScreen = document.getElementById('loading-screen');
+          if (loadingScreen) {
+            loadingScreen.hidden = false;
+          }
+
+          var loadingText = document.getElementById('loading-text');
+          if (loadingText) {
+            loadingText.textContent = isError
+              ? 'The game failed to load. See the error details below.'
+              : message;
+          }
+
+          // Expand the panel and update toggle state.
+          diagToggle.style.display = 'block';
+          diagEl.style.display = 'block';
+          diagToggle.setAttribute('aria-expanded', 'true');
+
+          // Announce to the visually-hidden live region so screen readers hear
+          // the error immediately, even if the panel was previously collapsed.
+          diagLive.textContent = '';
+          diagLive.textContent = message;
+
+          // Append to panel, do not replace, so earlier messages are not lost.
+          var line = document.createElement('p');
+          line.style.margin = '0.25rem 0 0';
+          line.textContent = message;
+          diagEl.appendChild(line);
+        }
+
+        // ── 7. Global error handler ───────────────────────────────────────────
+        window.onerror = function (msg, src, line, col, err) {
+          var detail = err && err.message ? err.message : String(msg);
+          if (src) {
+            var parts = src.split('/');
+            detail = detail + ' (' + parts[parts.length - 1] + ':' + line + ')';
+          }
+          showBootMessage('Error: ' + detail, true);
+          // Return false so the browser still logs it to the console.
+          return false;
+        };
+
+        // ── 8. Unhandled promise rejection handler ────────────────────────────
+        window.onunhandledrejection = function (event) {
+          var reason = event.reason;
+          var msg = (reason instanceof Error) ? reason.message : String(reason);
+          showBootMessage('Unhandled rejection: ' + msg, true);
+        };
+
+        // ── 9. Boot timeout ───────────────────────────────────────────────────
+        // If window.__bootComplete is not truthy after 5 seconds, show a
+        // "taking longer than usual" message. The module sets this flag at
+        // the end of the boot() function when it completes successfully.
+        setTimeout(function () {
+          if (!window.__bootComplete) {
+            var loadingText = document.getElementById('loading-text');
+            var alreadyFailed = loadingText &&
+              loadingText.textContent === 'The game failed to load. See the error details below.';
+            if (!alreadyFailed) {
+              showBootMessage('Loading is taking longer than usual. Check the error panel for details.', false);
+            }
+          }
+        }, 5000);
+
+      }());
+    </script>
+
+    <!-- Entry point -->
+    <script type="module" src="/src/main.js"
+      onerror="var _t=document.getElementById('diag-toggle');var _d=document.getElementById('boot-diagnostic');var _l=document.getElementById('diag-live');if(_t){_t.style.display='block';_t.setAttribute('aria-expanded','true');}if(_d){_d.style.display='block';var _p=document.createElement('p');_p.style.color='#ffcccc';_p.textContent='Error: module script failed to load ('+this.src+'). Check the network tab or your connection.';_d.appendChild(_p);}if(_l){_l.textContent='Error: module script failed to load. Check the network tab or your connection.';}var _lt=document.getElementById('loading-text');if(_lt){_lt.textContent='The game failed to load. See the error details below.';}var _ls=document.getElementById('loading-screen');if(_ls){_ls.hidden=false;}"></script>
+
+    <!-- Service worker registration — runs after first paint so it does not
+         delay the visible main menu (ADR 008). -->
+    <script type="module">
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sophies-escape-witchs-castle/sw.js')
+            .catch(() => {
+              // SW registration failure is non-fatal. Game works without it.
+            });
+        });
+      }
+    </script>
+  </body>
+</html>

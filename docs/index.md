@@ -15,7 +15,7 @@ No decision records yet. Architecture Decision Records are added to `decisions/`
 
 ## Patterns
 
-No pattern pages yet.
+- `patterns/dependency-graph-enabled.md`: how and why the GitHub Dependency Graph was enabled for the dependency-review CI job.
 
 ## Glossary
 
