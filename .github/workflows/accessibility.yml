@@ -50,6 +50,9 @@ jobs:
       - name: Install matching Chrome and ChromeDriver versions
         run: npx browser-driver-manager install chrome
 
+      - name: Install Chrome for Pa11y (Puppeteer)
+        run: npx puppeteer browsers install chrome
+
       - name: Serve the built site
         run: python3 -m http.server 8080 --directory dist &
 

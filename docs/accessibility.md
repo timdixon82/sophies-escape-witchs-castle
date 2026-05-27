@@ -169,13 +169,19 @@ Reason: Real-time 3D navigation (WASD movement, mouse-look) in a Three.js or Bab
 
 Mitigation: The game's narrative content (room descriptions, item discovery, puzzle progress, cutscene dialogue) is fully available through accessible `aria-live` regions and the visual overlay system. Screen reader users can engage with the inventory, hints, and all overlay systems using standard dialog keyboard patterns. The experience is not identical to sighted 3D navigation, but all story content and puzzle content is reachable. A future version may add a text-adventure mode as a fully accessible alternative play mode.
 
-Tim's approval: Required. This exception is not valid until Tim reviews and signs it. The exception record file will be created at `docs/exceptions/SE-001-3d-navigation.md` when Tim approves.
+Tim's approval: Approved 2026-05-27 (Q213A). Exception record filed at `docs/exceptions/SE-001-3d-navigation.md`.
 
 ## CI accessibility tooling
 
 ### Pa11y AppArmor fix for Ubuntu 24.04 runners
 
 Pa11y 9.x is built on Puppeteer. On Ubuntu 24.04 GitHub Actions runners, AppArmor blocks the default sandboxed Chromium launch. The fix is `pa11y.json` at the project root with `chromeLaunchConfig.args` set to `["--no-sandbox", "--disable-setuid-sandbox"]`. Pa11y reads this file automatically from the working directory. No CLI flag is needed; the older `--chromium-flags` argument is not the correct key for Pa11y 9.x. This is the same pattern used in Poop-Breakout (commit `bd6c732`).
+
+### Manual screen-reader evidence
+
+Manual VoiceOver and JAWS evidence passes are not required for this project. Tim Dixon has directed that automated accessibility checks (axe-core, Pa11y, WCAG 2.2 AAA code review) are sufficient. The 3D game view is `aria-hidden`; the overlay layer is covered by automated tooling. This decision was made on 2026-05-27 and applies for the lifetime of the project.
+
+The global screen-reader evidence pattern at `docs/patterns/screen-reader-evidence.md` (team repository) is suspended for this project.
 
 ### Exception SE-002: Saturated magical accent colours as non-text 3D decoration
 
@@ -185,4 +191,4 @@ Reason: Saturated purple and bright green used as lighting effects or particle e
 
 Mitigation: All informational use of purple and green uses the AAA-compliant pastel tokens `--accent-purple` and `--accent-green` in the HTML overlay layer. The 3D canvas decorative use of saturated colours is clearly separated from informational use.
 
-Tim's approval: Required. Exception record file to be created at `docs/exceptions/SE-002-3d-decorative-colours.md` when Tim approves.
+Tim's approval: Approved 2026-05-27 (Q214A). Exception record filed at `docs/exceptions/SE-002-3d-geometry-colours.md`.
