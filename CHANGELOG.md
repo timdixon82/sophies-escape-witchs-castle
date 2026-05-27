@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0](https://github.com/timdixon82/sophies-escape-witchs-castle/compare/v0.3.0...v0.4.0) (2026-05-25)
+
+
+### Features
+
+* **gameplay:** add hover highlight, 3D item labels, and silent-miss feedback ([ba3038a](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/ba3038a25839ad684ad5335c9f49d6a9579ddcd8))
+
+
+### Bug Fixes
+
+* **023:** gameplay fixes — hover highlight, item labels, silent-miss announcement ([13de5c7](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/13de5c7fd0df177ba3c1006729fb461d09752857))
+* **gameplay:** hover highlight, 3D item labels, and silent-miss feedback ([13de5c7](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/13de5c7fd0df177ba3c1006729fb461d09752857))
+
 ## [0.3.0](https://github.com/timdixon82/sophies-escape-witchs-castle/compare/v0.2.0...v0.3.0) (2026-05-25)
 
 
