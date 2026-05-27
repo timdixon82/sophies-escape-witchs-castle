@@ -130,26 +130,28 @@ import { ROOM_DESCRIPTIONS } from './assets/room-data.js';
 async function boot() {
   _logStep('boot() entered — module loaded successfully');
 
-  // 1. Show loading bar at 10%.
-  _setLoadingProgress(10, 'Initialising engine...');
+  // 1. Boot entered — show initial progress.
+  _setLoadingProgress(5, 'Starting...');
 
   // 2. Resolve the canvas.
   const canvas = /** @type {HTMLCanvasElement} */ (
     document.getElementById('game-canvas')
   );
   _logStep('canvas element resolved: ' + (canvas ? 'found' : 'NOT FOUND'));
+  _setLoadingProgress(10, 'Canvas ready.');
 
   // 3. Initialise the 3D engine.
   _logStep('Three.js loading (initEngine call)');
+  _setLoadingProgress(15, 'Initialising engine...');
   initEngine(canvas);
   _logStep('Three.js loaded — engine initialised');
-  _setLoadingProgress(40, 'Engine ready.');
+  _setLoadingProgress(35, 'Engine ready.');
 
   // 4. Initialise audio (stub in v0.1).
   _logStep('audio initialising');
   initAudio();
   _logStep('audio initialised');
-  _setLoadingProgress(50, 'Audio ready.');
+  _setLoadingProgress(45, 'Audio ready.');
 
   // 5. Install input bridges.
   _logStep('installing input bridges');
@@ -159,7 +161,7 @@ async function boot() {
   const joystickKnob = /** @type {HTMLElement} */ (document.getElementById('touch-joystick-knob'));
   installTouchBridge(canvas, joystickBase, joystickKnob);
   _logStep('input bridges installed');
-  _setLoadingProgress(70, 'Input ready.');
+  _setLoadingProgress(55, 'Input ready.');
 
   // 6. Install UI layers.
   _logStep('installing UI layers');
@@ -167,7 +169,7 @@ async function boot() {
   mountInventoryPanel();
   mountHintPanel();
   _logStep('UI layers installed');
-  _setLoadingProgress(80, 'UI ready.');
+  _setLoadingProgress(65, 'UI ready.');
 
   // 6b. Initialise room manager and interaction handler.
   _logStep('initialising room manager');
@@ -179,12 +181,13 @@ async function boot() {
     enterRoom('dungeon-cell');
   }
   _logStep('room manager initialised');
-  _setLoadingProgress(90, 'Rooms ready.');
+  _setLoadingProgress(80, 'Rooms ready.');
 
   // 7. Check for a saved session.
   _logStep('loading from storage');
   const hasSave = loadFromStorage();
   _logStep('storage load complete (hasSave=' + !!hasSave + ')');
+  _setLoadingProgress(88, 'Save data loaded.');
 
   // 8. Subscribe to state changes for cross-cutting reactions.
   subscribe(_onStateChange);
@@ -195,6 +198,7 @@ async function boot() {
   // 10. Analytics page view.
   _logStep('firing analytics page view');
   trackPageView();
+  _setLoadingProgress(92, 'Almost ready...');
 
   // 11. Show loading complete, then show main menu.
   _setLoadingProgress(100, 'Ready.');

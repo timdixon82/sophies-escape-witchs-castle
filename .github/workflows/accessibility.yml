@@ -50,8 +50,12 @@ jobs:
       - name: Install matching Chrome and ChromeDriver versions
         run: npx browser-driver-manager install chrome
 
-      - name: Install Chrome for Pa11y (Puppeteer)
-        run: npx puppeteer browsers install chrome
+      - name: Set Chrome and ChromeDriver paths for accessibility tools
+        run: |
+          CHROME=$(find /home/runner/.browser-driver-manager/chrome -name "chrome" -type f 2>/dev/null | head -1)
+          DRIVER=$(find /home/runner/.browser-driver-manager/chromedriver -name "chromedriver" -type f 2>/dev/null | head -1)
+          echo "A11Y_CHROME=${CHROME:-/usr/bin/google-chrome-stable}" >> $GITHUB_ENV
+          echo "A11Y_CHROMEDRIVER=${DRIVER}" >> $GITHUB_ENV
 
       - name: Serve the built site
         run: python3 -m http.server 8080 --directory dist &
@@ -60,7 +64,9 @@ jobs:
         run: npx wait-on http://localhost:8080 --timeout 15000
 
       - name: Pa11y at WCAG 2.2 AAA
+        env:
+          PUPPETEER_EXECUTABLE_PATH: ${{ env.A11Y_CHROME }}
         run: pa11y --standard WCAG2AAA "http://localhost:8080/sophies-escape-witchs-castle/"
 
       - name: axe-core at WCAG 2.2 AAA
-        run: axe "http://localhost:8080/sophies-escape-witchs-castle/" --tags wcag2a,wcag2aa,wcag2aaa,wcag22aa,wcag22aaa --chrome-options="no-sandbox"
+        run: axe "http://localhost:8080/sophies-escape-witchs-castle/" --tags wcag2a,wcag2aa,wcag2aaa,wcag22aa,wcag22aaa --chrome-options="no-sandbox" --chromedriver-path "$A11Y_CHROMEDRIVER"
