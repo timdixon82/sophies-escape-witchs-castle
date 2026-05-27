@@ -50,9 +50,6 @@ jobs:
       - name: Install matching Chrome and ChromeDriver versions
         run: npx browser-driver-manager install chrome
 
-      - name: Set PUPPETEER_EXECUTABLE_PATH to system Chrome for Pa11y
-        run: echo "PUPPETEER_EXECUTABLE_PATH=$(which google-chrome-stable || which google-chrome)" >> $GITHUB_ENV
-
       - name: Serve the built site
         run: python3 -m http.server 8080 --directory dist &
 
@@ -60,6 +57,8 @@ jobs:
         run: npx wait-on http://localhost:8080 --timeout 15000
 
       - name: Pa11y at WCAG 2.2 AAA
+        env:
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
         run: pa11y --standard WCAG2AAA "http://localhost:8080/sophies-escape-witchs-castle/"
 
       - name: axe-core at WCAG 2.2 AAA
