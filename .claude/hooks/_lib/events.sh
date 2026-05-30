@@ -7,10 +7,21 @@
 # Usage:
 #   source "$CLAUDE_PROJECT_DIR/.claude/hooks/_lib/events.sh"
 #   append_event <agent> <tool> <input_summary> <output_summary> \
-#                <exit_code> <token_count> <duration_ms>
+#                <exit_code> <token_count> <duration_ms> [<dispatch_mode>]
 #
 # All arguments are strings. Pass an empty string "" for unknown values.
 # The function is safe: it never returns non-zero.
+#
+# The dispatch_mode field records whether this event was part of a
+# sequential or parallel dispatch by Sonja. Valid values are:
+#   "sequential"  -- the subagent was dispatched one at a time.
+#   "parallel"    -- the subagent was part of a parallel dispatch group.
+#   ""            -- dispatch mode was not recorded for this event.
+#
+# Callers that do not know the dispatch mode may omit the argument or
+# pass an empty string; the field will be present in the JSON but empty.
+# This lets scripts/usage.sh compute the share of parallel dispatches
+# once callers are updated to supply the value.
 
 append_event() {
   local agent="${1:-}"
@@ -20,6 +31,7 @@ append_event() {
   local exit_code="${5:-}"
   local token_count="${6:-}"
   local duration_ms="${7:-}"
+  local dispatch_mode="${8:-}"
 
   # Resolve the current work folder.
   local work_dir="$CLAUDE_PROJECT_DIR/.claude/work"
@@ -43,6 +55,7 @@ append_event() {
     --arg exit_code "$exit_code" \
     --arg token_count "$token_count" \
     --arg duration_ms "$duration_ms" \
+    --arg dispatch_mode "$dispatch_mode" \
     '{
       ts: $ts,
       agent: $agent,
@@ -51,6 +64,7 @@ append_event() {
       output: $output_summary,
       exit_code: $exit_code,
       tokens: $token_count,
-      duration_ms: $duration_ms
+      duration_ms: $duration_ms,
+      dispatch_mode: $dispatch_mode
     }' >> "$events_file" 2>/dev/null || true
 }

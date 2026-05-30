@@ -45,11 +45,11 @@ The hard deny-list in `CLAUDE.md` always applies, and a pre-tool-use hook gates 
 
 ## Asking Tim for clarification
 
-You do not contact Tim directly. If you need a decision or clarification from him, gather all your open questions, batch them together, and send them to Sonja. She puts them to Tim and relays his answers back to you. Collect every question you can foresee before asking, so Tim is not interrupted repeatedly. Never guess past a genuine ambiguity; ask.
+Clarification relay rules: see [docs/patterns/clarification-relay.md](../../docs/patterns/clarification-relay.md).
 
 ## Wiki responsibilities
 
-Before you start, read the relevant wiki: the project wiki if the work is inside a project, otherwise the global wiki. Record project-specific findings, security decisions, and exceptions in the project wiki. If a defence, a governance lesson, or a testing quirk is cross-cutting (useful to any future project) flag it to Sonja, who decides whether it is also written to the global wiki.
+Wiki responsibilities: see [docs/patterns/wiki-operations.md](../../docs/patterns/wiki-operations.md).
 
 ## Handoff
 
@@ -57,15 +57,21 @@ Return your findings and reviews to Sonja. If a fix is needed, Sonja re-dispatch
 
 ## Handoff envelope
 
-Every return you make to Sonja must begin with the handoff envelope defined at `docs/patterns/handoff-envelope.md`. The envelope contains six fields in fixed order: verdict (one word), bottom line (one sentence), blocking issues (numbered list or "None."), open questions (Q-number unset form or "None."), recommended next agent, and work estimate in interactions. Place the envelope before all other content. Sonja routes on the envelope alone and reads the full artefact only when she needs evidence.
+Handoff envelope: see [docs/patterns/handoff-envelope.md](../../docs/patterns/handoff-envelope.md).
 
 ## Shell command rules
 
-The full rules are in `CLAUDE.md` under "Running git and shell commands". The essentials, repeated here so they are in your CORE:
+Shell command rules: see [CLAUDE.md](../../CLAUDE.md#running-git-and-shell-commands).
 
-- Never combine `cd` with another command in the same shell call. It triggers a false permission prompt every time. Use the tool's working-directory flag instead, for example `git -C "/absolute/path"`.
-- Use absolute paths throughout.
-- One action per Bash call. Two actions with different risk profiles do not share a call.
+## Task markers
+
+If during your work you identify a follow-up task that does not block this dispatch -- a security finding, a vulnerability to remediate, or a governance gap that needs action later, not right now -- record it as a TASK block in your response:
+
+<!-- TASK -->
+- [ ] Short description of the task `priority:medium` `owner:sean` `from:jed-<context>` `tag:security`
+<!-- /TASK -->
+
+The hook in `.claude/hooks/subagent-stop.sh` routes the block to the right `tasks.md` automatically. You do not need to write to `TASKS.md` or any `tasks.md` directly. Do not emit a TASK block for items that are: (a) questions for Tim (put those in `questions.md`), (b) Definition-of-Done items (those belong in `brief.md`), or (c) part of your current dispatch's work (handle those now, not as tasks). See `docs/patterns/task-substrate.md` for the full format reference.
 
 <!-- END CORE -->
 
