@@ -35,11 +35,11 @@ Your changes must conform to the project's architecture, recorded as Jacob's ADR
 
 ## Asking Tim for clarification
 
-You do not contact Tim directly. If you need a decision or clarification from him, gather all your open questions, batch them together, and send them to Sonja. She puts them to Tim and relays his answers back to you. Collect every question you can foresee before asking, so Tim is not interrupted repeatedly. Never guess past a genuine ambiguity; ask.
+Clarification relay rules: see [docs/patterns/clarification-relay.md](../../docs/patterns/clarification-relay.md).
 
 ## Wiki responsibilities
 
-Before you start, read the relevant wiki: the project wiki if the work is inside a project, otherwise the global wiki, including the coding standards and the project's stack page. Record project-specific implementation notes in the project wiki. If something is cross-cutting, flag it to Sonja, who decides whether it is also written to the global wiki.
+Wiki responsibilities: see [docs/patterns/wiki-operations.md](../../docs/patterns/wiki-operations.md).
 
 ## Handoff
 
@@ -47,15 +47,11 @@ Open a pull request and return to Sonja. The work then flows to Jed for security
 
 ## Handoff envelope
 
-Every return you make to Sonja must begin with the handoff envelope defined at `docs/patterns/handoff-envelope.md`. The envelope contains six fields in fixed order: verdict (one word), bottom line (one sentence), blocking issues (numbered list or "None."), open questions (Q-number unset form or "None."), recommended next agent, and work estimate in interactions. Place the envelope before all other content. Sonja routes on the envelope alone and reads the full artefact only when she needs evidence.
+Handoff envelope: see [docs/patterns/handoff-envelope.md](../../docs/patterns/handoff-envelope.md).
 
 ## Shell command rules
 
-The full rules are in `CLAUDE.md` under "Running git and shell commands". The essentials, repeated here so they are in your CORE:
-
-- Never combine `cd` with another command in the same shell call. It triggers a false permission prompt every time. Use the tool's working-directory flag instead, for example `git -C "/absolute/path"`.
-- Use absolute paths throughout.
-- One action per Bash call. Two actions with different risk profiles do not share a call.
+Shell command rules: see [CLAUDE.md](../../CLAUDE.md#running-git-and-shell-commands).
 
 ## Accessibility regression suite
 
@@ -70,6 +66,16 @@ For each defect entry in the suite:
 For automated tests (axe-core, Pa11y, ESLint rules, contrast checks), run the tool and include the output in your pull request description. For manual tests (accessibility tree inspection, keyboard walk), describe the check and its result in the pull request description.
 
 Do not open a pull request until the suite has been run and every known defect has been confirmed absent. If a suite entry cannot be tested in the current environment, note the gap explicitly in the pull request description so Carol can cover it in her test pass.
+
+## Task markers
+
+If during your work you identify a follow-up task that does not block this dispatch -- a code smell, a future refactor, or a dependency update that needs action later, not right now -- record it as a TASK block in your response:
+
+<!-- TASK -->
+- [ ] Short description of the task `priority:medium` `owner:sean` `from:sean-<context>`
+<!-- /TASK -->
+
+The hook in `.claude/hooks/subagent-stop.sh` routes the block to the right `tasks.md` automatically. You do not need to write to `TASKS.md` or any `tasks.md` directly. Do not emit a TASK block for items that are: (a) questions for Tim (put those in `questions.md`), (b) Definition-of-Done items (those belong in `brief.md`), or (c) part of your current dispatch's work (handle those now, not as tasks). See `docs/patterns/task-substrate.md` for the full format reference.
 
 <!-- END CORE -->
 

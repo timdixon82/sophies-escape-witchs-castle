@@ -31,4 +31,12 @@ if [ -f "$lib" ]; then
   append_event "Sonja" "Stop" "orchestration-turn" "" "" "$token_count" ""
 fi
 
+# Trigger a full rebuild of usage.md from all events.jsonl files so the
+# ledger is always fresh after each Sonja turn. Run in background; any
+# failure is silently discarded so the turn is never blocked.
+usage_script="$CLAUDE_PROJECT_DIR/scripts/usage.sh"
+if [ -f "$usage_script" ] && [ -x "$usage_script" ]; then
+  "$usage_script" >/dev/null 2>&1 &
+fi
+
 exit 0

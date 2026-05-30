@@ -50,13 +50,11 @@ When you make a voice or copy call, cite the section or named rule from `docs/wr
 
 ## Asking Tim for clarification
 
-Requirements, acceptance criteria, and a research brief often need Tim's input. You do not contact Tim directly. When something is unclear, or a decision is needed, gather all your open questions, batch them together, and send them to Sonja. She gets the answers from Tim and passes them back to you. Collect every question you can foresee before asking, so Tim is not interrupted repeatedly. Never guess a requirement; ask.
+Clarification relay rules: see [docs/patterns/clarification-relay.md](../../docs/patterns/clarification-relay.md).
 
 ## Wiki responsibilities
 
-Before you start, read the relevant wiki, the project wiki if the work is inside a project, otherwise the global wiki, so your work builds on what the team already knows. The team may already have a research answer; do not redo settled work.
-
-Write requirements, documentation, and project-specific findings into the project wiki. If something is cross-cutting (useful to any future project) flag it to Sonja, who decides whether it is also written to the global wiki.
+Wiki responsibilities: see [docs/patterns/wiki-operations.md](../../docs/patterns/wiki-operations.md).
 
 ## Handoff
 
@@ -64,7 +62,21 @@ Return your requirements, documents, research, or copy to Sonja. Requirements us
 
 ## Handoff envelope
 
-Every return you make to Sonja must begin with the handoff envelope defined at `docs/patterns/handoff-envelope.md`. The envelope contains six fields in fixed order: verdict (one word), bottom line (one sentence), blocking issues (numbered list or "None."), open questions (Q-number unset form or "None."), recommended next agent, and work estimate in interactions. Place the envelope before all other content. Sonja routes on the envelope alone and reads the full artefact only when she needs evidence.
+Handoff envelope: see [docs/patterns/handoff-envelope.md](../../docs/patterns/handoff-envelope.md).
+
+### References
+
+- Shell command rules: see [CLAUDE.md](../../CLAUDE.md#running-git-and-shell-commands).
+
+## Task markers
+
+If during your work you identify a follow-up task that does not block this dispatch -- a finding that needs action later, not right now -- record it as a TASK block in your response:
+
+<!-- TASK -->
+- [ ] Short description of the task `priority:medium` `owner:sean` `from:tad-<context>`
+<!-- /TASK -->
+
+The hook in `.claude/hooks/subagent-stop.sh` routes the block to the right `tasks.md` automatically. You do not need to write to `TASKS.md` or any `tasks.md` directly. Do not emit a TASK block for items that are: (a) questions for Tim (put those in `questions.md`), (b) Definition-of-Done items (those belong in `brief.md`), or (c) part of your current dispatch's work (handle those now, not as tasks). See `docs/patterns/task-substrate.md` for the full format reference.
 
 <!-- END CORE -->
 

@@ -3,8 +3,7 @@
   "permissions": {
     "allow": [
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__take_screenshot",
-      "Bash(timdixon-blog-pp-cli posts *)",
-      "Bash(ls)",
+"Bash(ls)",
       "Bash(ls -*)",
       "Bash(ls /*)",
       "Bash(pwd)",
@@ -36,9 +35,35 @@
       "Bash(mkdir *)",
       "Bash(bash scripts/*.sh)",
       "Bash(bash scripts/*.sh *)",
+      "Bash(bash /Users/timdixon/Code/AgentTeam/scripts/*.sh)",
+      "Bash(bash /Users/timdixon/Code/AgentTeam/scripts/*.sh *)",
+      "Bash(grep *)",
+      "Bash(find /Users/timdixon/Code/AgentTeam/* *)",
+      "Bash(shellcheck *)",
+      "Bash(semgrep scan *)",
+      "Bash(npm --prefix * run lint)",
+      "Bash(npm --prefix * run lint *)",
       "Bash(chmod +x *)",
       "Bash(cp *)",
       "Bash(cp -R *)"
+    ],
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f*)",
+      "Bash(git push --force-with-lease*)",
+      "Bash(git push * --force-with-lease*)",
+      "Bash(git push --delete*)",
+      "Bash(git push * --delete*)",
+      "Bash(git branch -D*)",
+      "Bash(git branch -d*)",
+      "Bash(git branch --delete*)",
+      "Bash(git filter-branch*)",
+      "Bash(git filter-repo*)",
+      "Bash(gh repo delete*)",
+      "mcp__github__delete_repository",
+      "mcp__github__delete_branch"
     ]
   },
   "hooks": {
