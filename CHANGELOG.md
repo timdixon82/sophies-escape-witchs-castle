@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0](https://github.com/timdixon82/sophies-escape-witchs-castle/compare/v0.4.0...v0.5.0) (2026-05-30)
+
+
+### Features
+
+* **scripts:** add next-q.sh for session Q-number display ([0bb2feb](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/0bb2feb84c4e56f66e2131b84566db84f9c63224))
+* **scripts:** add next-q.sh so session-start displays the next Q-number ([f49c788](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/f49c788f9625ad6999b9c30e89f7e3d16fa4da6b))
+
+
+### Bug Fixes
+
+* **a11y:** update loading bar aria-valuenow during boot sequence ([225af7b](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/225af7b5901e9040ddc045a0c1b55049d37a2e36))
+* **a11y:** update loading bar aria-valuenow during boot sequence ([cbde6c8](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/cbde6c8ae6633ad37e49b368c4010a144da3da24))
+
 ## [0.4.0](https://github.com/timdixon82/sophies-escape-witchs-castle/compare/v0.3.0...v0.4.0) (2026-05-25)
 
 
