@@ -1,24 +1,36 @@
-# Accessibility checks at WCAG 2.2 AAA using axe-core and Pa11y.
+# Accessibility checks at WCAG 2.2 AAA using Pa11y and axe-core.
 #
-# Runs on every pull request. Builds the Vite project, then serves the dist/
-# folder on port 8080, then runs both tools against it.
+# Hybrid setup for this project:
 #
-# Pa11y reads pa11y.json from the working directory automatically.
+#   Tool pinning (template pattern). Pa11y, @axe-core/cli, and wait-on are
+#   pinned in .github/accessibility-tools/package.json so Dependabot can
+#   track and propose version bumps automatically. They are installed via
+#   npm ci against that manifest, never with npm install -g.
+#
+#   Chrome and ChromeDriver matching (project pattern). browser-driver-manager
+#   installs a matched Chrome and ChromeDriver pair into the runner's home
+#   directory, sidestepping the GitHub-Actions Chrome-version-drift problem
+#   without depending on the Chrome for Testing CDN. The exact binary paths
+#   are exported into GITHUB_ENV so the Pa11y and axe steps can address them
+#   directly. PUPPETEER_EXECUTABLE_PATH is scoped to the Pa11y step only,
+#   so Puppeteer-using tools downstream are not affected.
+#
+# The site under test is the Vite build output (dist/), served at the
+# project's deployed Pages path so the relative-URL assumptions in the
+# built HTML match what is checked in CI.
+#
 # pa11y.json sets chromeLaunchConfig.args to ["--no-sandbox",
 # "--disable-setuid-sandbox"] so that Pa11y can launch Chromium on
-# Ubuntu 24.04 runners, which have AppArmor restrictions that block the
-# default sandboxed launch. This is the same pattern used in Poop-Breakout
-# (commit bd6c732). No --chromium-flags CLI argument is used; pa11y.json
-# is the Pa11y 9.x (Puppeteer-format) config file.
+# Ubuntu 24.04 runners, which restrict unprivileged user namespaces.
 #
 # Note: the canvas game area will report accessibility gaps detected by
 # Carol's baseline audit. These gaps are documented as accepted exceptions
-# at docs/exceptions/SE-001-3d-navigation.md. The pa11y and axe runs are
+# at docs/exceptions/SE-001-3d-navigation.md. The Pa11y and axe runs are
 # still required so that the HTML overlay surfaces (main menu, inventory,
 # hints, pause) pass the automated checks.
 #
 # No untrusted GitHub context variables are used in run steps.
-# Action SHAs verified on 2026-05-21.
+# Action SHAs verified on 2026-05-31.
 
 name: Accessibility
 on:
@@ -29,6 +41,7 @@ permissions:
 
 jobs:
   accessibility:
+    name: Pa11y and axe at WCAG 2.2 AAA
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
@@ -44,8 +57,17 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Install accessibility tools
-        run: npm install -g pa11y @axe-core/cli wait-on browser-driver-manager
+      - name: Install accessibility tools at pinned versions
+        # Tools are managed in .github/accessibility-tools/package.json so
+        # Dependabot can track and propose version bumps automatically.
+        run: npm ci
+        working-directory: .github/accessibility-tools
+
+      - name: Add accessibility tools to PATH
+        run: echo "$GITHUB_WORKSPACE/.github/accessibility-tools/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: Install browser-driver-manager
+        run: npm install -g browser-driver-manager
 
       - name: Install matching Chrome and ChromeDriver versions
         run: npx browser-driver-manager install chrome
@@ -54,14 +76,14 @@ jobs:
         run: |
           CHROME=$(find /home/runner/.browser-driver-manager/chrome -name "chrome" -type f 2>/dev/null | head -1)
           DRIVER=$(find /home/runner/.browser-driver-manager/chromedriver -name "chromedriver" -type f 2>/dev/null | head -1)
-          echo "A11Y_CHROME=${CHROME:-/usr/bin/google-chrome-stable}" >> $GITHUB_ENV
-          echo "A11Y_CHROMEDRIVER=${DRIVER}" >> $GITHUB_ENV
+          echo "A11Y_CHROME=${CHROME:-/usr/bin/google-chrome-stable}" >> "$GITHUB_ENV"
+          echo "A11Y_CHROMEDRIVER=${DRIVER}" >> "$GITHUB_ENV"
 
       - name: Serve the built site
         run: python3 -m http.server 8080 --directory dist &
 
       - name: Wait for server to be ready
-        run: npx wait-on http://localhost:8080 --timeout 15000
+        run: wait-on http://localhost:8080 --timeout 15000
 
       - name: Pa11y at WCAG 2.2 AAA
         env:

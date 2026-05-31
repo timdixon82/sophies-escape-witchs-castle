@@ -1,4 +1,17 @@
 {
+  "_comment": [
+    "Accessibility runner configuration for Pa11y on Sophie's Escape.",
+    "chromeLaunchConfig.args disables Chromium's sandbox so Pa11y can",
+    "launch on the GitHub-hosted Ubuntu 24.04 runner, which restricts",
+    "unprivileged user namespaces (the same constraint addressed in the",
+    "team-template pa11y.json).",
+    "No ignore entries are needed at this time: the accepted exceptions",
+    "for the canvas surface (SE-001, SE-002) are documented at",
+    "docs/exceptions/ and do not produce Pa11y findings on the HTML",
+    "overlay surface that Pa11y actually scans.",
+    "Do not add ignore entries here without a matching record in",
+    "docs/accessibility.md or a project exception under docs/exceptions/."
+  ],
   "chromeLaunchConfig": {
     "args": ["--no-sandbox", "--disable-setuid-sandbox"]
   }

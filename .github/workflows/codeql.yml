@@ -1,7 +1,7 @@
 # CodeQL static analysis.
 #
 # Action versions were verified against GitHub and pinned to commit SHAs
-# on 2026-05-21. The version tag is in the trailing comment.
+# on 2026-05-30. The version tag is in the trailing comment.
 #
 # CodeQL does not support PHP, and on a free GitHub account it is not
 # available for a private repository. This workflow covers JavaScript for
@@ -15,6 +15,7 @@ on:
     - cron: '0 6 * * 1'  # weekly, Monday morning
 
 permissions:
+  actions: read
   contents: read
   security-events: write
 

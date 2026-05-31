@@ -8,6 +8,11 @@ Cross-cutting learnings flow to both this wiki and the global wiki at the time t
 
 - `coding-standards.md`: this project's stack and its project-specific coding notes.
 - `accessibility.md`: this project's accessibility notes.
+- `privacy.md`: this project's analytics posture, data collection statement, and third-party services.
+- `requirements.md`: this project's user stories, functional requirements, and definition of done.
+- `security-review.md`: this project's security review findings.
+- `code-review.md`: Jed's OWASP-mapped penetration test and code review for this project.
+- `release-process.md`: this project's branching model, pull-request flow, merge gate, and release steps.
 
 ## Decisions
 

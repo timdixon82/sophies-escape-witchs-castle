@@ -18,10 +18,12 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - name: Semgrep
-        # Semgrep is run through its command-line tool, "semgrep ci".
+        # semgrep scan runs locally with the default ruleset and exits non-zero
+        # on any finding. semgrep ci requires a SEMGREP_APP_TOKEN and uses
+        # cloud-based CI mode; it is not used here to avoid token dependency.
         run: |
           pip install semgrep
-          semgrep ci
+          semgrep scan --config p/default --error
 
   trivy:
     runs-on: ubuntu-latest

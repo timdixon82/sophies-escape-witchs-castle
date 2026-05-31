@@ -19,7 +19,12 @@ jobs:
       - name: Release Please
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7  # v5.0.0
         with:
+          # GITHUB_TOKEN is a built-in secret provided automatically by
+          # GitHub Actions on every run. No manual token configuration or
+          # repository secret is required.
           token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
 
       # Deploy step: this is a stub. Fill it in with the project's hosting
       # target. GitHub Pages for a static project; the Amazon Web Services
