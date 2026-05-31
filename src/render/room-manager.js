@@ -366,19 +366,12 @@ function _addInteractable(mesh, id, label, type) {
 }
 
 /**
- * Creates a glowing amber interactable item box.
- * Also creates a floating DOM label (aria-hidden, visual only) and stores it
- * on mesh.userData.labelEl so the render loop can reposition it each frame.
+ * Attaches a floating DOM label (aria-hidden, visual only) to a mesh.
+ * Stores it on mesh.userData.labelEl so the render loop can reposition it each frame.
+ * @param {THREE.Mesh} mesh
+ * @param {string} label
  */
-function _makeItemBox(pos, id, label) {
-  const mesh = _makeBox(0.25, 0.25, 0.25, TOKEN_ACCENT_AMBER, pos, {
-    emissive: TOKEN_ACCENT_AMBER,
-    emissiveIntensity: 0.5,
-    roughness: 0.4,
-  });
-  _addInteractable(mesh, id, label, 'item');
-
-  // Floating HTML label — visual only; the keyboard nav list is the accessible form.
+function _attachItemLabel(mesh, label) {
   const labelEl = document.createElement('div');
   labelEl.textContent = label;
   labelEl.setAttribute('aria-hidden', 'true');
@@ -396,7 +389,170 @@ function _makeItemBox(pos, id, label) {
   ].join(';');
   document.body.appendChild(labelEl);
   mesh.userData.labelEl = labelEl;
+}
 
+// ─── Per-item shape builders ──────────────────────────────────────────────────
+
+function _makeItemBentSpoon(pos) {
+  const label = ITEMS['bent-spoon'].label;
+  const mesh = _makeBox(0.05, 0.05, 0.4, 0xa0a0a0, pos, { metalness: 0.8, roughness: 0.3 });
+  mesh.rotation.z = 0.15;
+  _addInteractable(mesh, 'item-bent-spoon', label, 'item');
+  _attachItemLabel(mesh, label);
+  return mesh;
+}
+
+function _makeItemCandleStub(pos) {
+  const label = ITEMS['candle-stub'].label;
+  const mesh = _makeCylinder(0.055, 0.065, 0.18, 0xf0ead8, pos);
+  mesh.material.roughness = 0.7;
+  _addInteractable(mesh, 'item-candle-stub', label, 'item');
+  _attachItemLabel(mesh, label);
+  // Tiny amber wick light
+  const wickLight = new THREE.PointLight(0xffa040, 0.3, 0.6, 2);
+  wickLight.position.set(pos[0], pos[1] + 0.09 + 0.05, pos[2]);
+  _add(wickLight);
+  return mesh;
+}
+
+function _makeItemMoonflowerPetal(pos) {
+  const label = ITEMS['moonflower-petal'].label;
+  const mesh = _makeCylinder(0.18, 0.18, 0.025, TOKEN_ACCENT_PURPLE, pos);
+  mesh.material.emissive.setHex(TOKEN_ACCENT_PURPLE);
+  mesh.material.emissiveIntensity = 0.6;
+  _addInteractable(mesh, 'item-moonflower-petal', label, 'item');
+  _attachItemLabel(mesh, label);
+  return mesh;
+}
+
+function _makeItemOilSoakedRag(pos) {
+  const label = ITEMS['oil-soaked-rag'].label;
+  const mesh = _makeBox(0.22, 0.05, 0.18, 0x3a2a1a, pos, { roughness: 1.0 });
+  _addInteractable(mesh, 'item-oil-soaked-rag', label, 'item');
+  _attachItemLabel(mesh, label);
+  return mesh;
+}
+
+function _makeItemPinchOfSalt(pos) {
+  const label = ITEMS['pinch-of-salt'].label;
+  const mesh = _makeBox(0.10, 0.10, 0.10, 0xe8e8e0, pos, { roughness: 0.9 });
+  _addInteractable(mesh, 'item-pinch-of-salt', label, 'item');
+  _attachItemLabel(mesh, label);
+  // Small near-white light to make tiny cube catch the eye
+  const saltLight = new THREE.PointLight(0xf0f0e0, 0.15, 0.5, 2);
+  saltLight.position.set(pos[0], pos[1], pos[2]);
+  _add(saltLight);
+  return mesh;
+}
+
+function _makeItemDriedMushroom(pos) {
+  const label = ITEMS['dried-mushroom'].label;
+  // Stem (primary interactable)
+  const stem = _makeCylinder(0.04, 0.05, 0.10, 0x8a6040, pos);
+  _addInteractable(stem, 'item-dried-mushroom', label, 'item');
+  _attachItemLabel(stem, label);
+  // Cap (decorative, offset upward)
+  const cap = _makeCylinder(0.14, 0.08, 0.07, 0x6b4a28, [pos[0], pos[1] + 0.085, pos[2]]);
+  _add(cap);
+  return stem;
+}
+
+function _makeItemSmallIronKey(pos) {
+  const label = ITEMS['small-iron-key'].label;
+  // Shaft (interactable)
+  const shaft = _makeBox(0.05, 0.05, 0.22, 0x707070, pos, { metalness: 0.7, roughness: 0.4 });
+  _addInteractable(shaft, 'item-small-iron-key', label, 'item');
+  _attachItemLabel(shaft, label);
+  // Bow (decorative torus)
+  const bowGeo = new THREE.TorusGeometry(0.05, 0.018, 8, 16);
+  const bowMat = new THREE.MeshStandardMaterial({ color: 0x707070, metalness: 0.7, roughness: 0.4, emissive: 0xffffff, emissiveIntensity: 0.0 });
+  const bow = new THREE.Mesh(bowGeo, bowMat);
+  bow.position.set(pos[0], pos[1], pos[2] - 0.11);
+  _add(bow);
+  return shaft;
+}
+
+function _makeItemSymbolOrderScroll(pos) {
+  const label = ITEMS['symbol-order-scroll'].label;
+  const mesh = _makeCylinder(0.04, 0.04, 0.35, 0xe8d8a0, pos);
+  mesh.material.roughness = 0.7;
+  mesh.rotation.z = Math.PI / 2;
+  _addInteractable(mesh, 'item-symbol-order-scroll', label, 'item');
+  _attachItemLabel(mesh, label);
+  return mesh;
+}
+
+function _makeItemTornSpellBookPage(pos) {
+  const label = ITEMS['torn-spell-book-page'].label;
+  const mesh = _makeBox(0.32, 0.012, 0.42, 0xd4c080, pos, { roughness: 0.8 });
+  _addInteractable(mesh, 'item-torn-spell-book-page', label, 'item');
+  _attachItemLabel(mesh, label);
+  return mesh;
+}
+
+function _makeItemArmouryChestKey(pos) {
+  const label = ITEMS['armoury-chest-key'].label;
+  // Shaft (interactable)
+  const shaft = _makeBox(0.06, 0.06, 0.28, 0x505050, pos, { metalness: 0.8, roughness: 0.4 });
+  _addInteractable(shaft, 'item-armoury-chest-key', label, 'item');
+  _attachItemLabel(shaft, label);
+  // Bow (decorative torus)
+  const bowGeo = new THREE.TorusGeometry(0.06, 0.022, 8, 16);
+  const bowMat = new THREE.MeshStandardMaterial({ color: 0x505050, metalness: 0.8, roughness: 0.4, emissive: 0xffffff, emissiveIntensity: 0.0 });
+  const bow = new THREE.Mesh(bowGeo, bowMat);
+  bow.position.set(pos[0], pos[1], pos[2] - 0.14);
+  _add(bow);
+  return shaft;
+}
+
+function _makeItemChapelSigil(pos) {
+  const label = ITEMS['chapel-sigil'].label;
+  const mesh = _makeCylinder(0.15, 0.15, 0.05, 0x808090, pos);
+  mesh.material.roughness = 0.6;
+  mesh.material.emissive.setHex(TOKEN_ACCENT_PURPLE);
+  mesh.material.emissiveIntensity = 0.2;
+  _addInteractable(mesh, 'item-chapel-sigil', label, 'item');
+  _attachItemLabel(mesh, label);
+  return mesh;
+}
+
+function _makeItemIronGateKey(pos) {
+  const label = ITEMS['iron-gate-key'].label;
+  // Shaft (interactable)
+  const shaft = _makeBox(0.07, 0.07, 0.32, 0x505050, pos, { metalness: 0.8, roughness: 0.4 });
+  _addInteractable(shaft, 'item-iron-gate-key', label, 'item');
+  _attachItemLabel(shaft, label);
+  // Bow (decorative torus)
+  const bowGeo = new THREE.TorusGeometry(0.07, 0.026, 8, 16);
+  const bowMat = new THREE.MeshStandardMaterial({ color: 0x505050, metalness: 0.8, roughness: 0.4, emissive: 0xffffff, emissiveIntensity: 0.0 });
+  const bow = new THREE.Mesh(bowGeo, bowMat);
+  bow.position.set(pos[0], pos[1], pos[2] - 0.16);
+  _add(bow);
+  return shaft;
+}
+
+function _makeItemBrassStarChart(pos) {
+  const label = ITEMS['brass-star-chart'].label;
+  const mesh = _makeBox(0.28, 0.025, 0.28, 0xc09030, pos, { metalness: 0.7, roughness: 0.3, emissive: 0xffc040, emissiveIntensity: 0.15 });
+  _addInteractable(mesh, 'item-brass-star-chart', label, 'item');
+  _attachItemLabel(mesh, label);
+  return mesh;
+}
+
+function _makeItemChargedBindingCrystal(pos) {
+  const label = ITEMS['charged-binding-crystal'].label;
+  const geo = new THREE.SphereGeometry(0.12, 12, 12);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x9060d0,
+    emissive: TOKEN_ACCENT_PURPLE,
+    emissiveIntensity: 0.8,
+    roughness: 0.3,
+    metalness: 0.1,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(...pos);
+  _addInteractable(mesh, 'item-charged-binding-crystal', label, 'item');
+  _attachItemLabel(mesh, label);
   return mesh;
 }
 
@@ -455,12 +611,12 @@ function _buildDungeonCell() {
   // Loose stone on the floor (item: bent-spoon)
   const state = getState();
   if (!state.inventory.items.some((i) => i.itemId === 'bent-spoon')) {
-    _makeItemBox([0.6, 0.13, 1.5], 'item-bent-spoon', 'Loose stone (Bent spoon underneath)');
+    _makeItemBentSpoon([0.6, 0.13, 1.5]);
   }
 
   // Candle on a shelf (item: candle-stub)
   if (!state.inventory.items.some((i) => i.itemId === 'candle-stub')) {
-    _makeItemBox([-1.8, 1.4, -2.0], 'item-candle-stub', 'Candle stub on a shelf');
+    _makeItemCandleStub([-1.8, 1.4, -2.0]);
   }
 
   // Cell door (back wall) — only interactable if dungeon-cell puzzle solved
@@ -486,16 +642,12 @@ function _buildStoneCorridor() {
 
   // Moonflower petal in wall alcove (left wall)
   if (!state.inventory.items.some((i) => i.itemId === 'moonflower-petal')) {
-    const petal = _makeItemBox([-1.9, 1.8, -3.5], 'item-moonflower-petal', 'Moonflower petal in alcove');
-    // Give it a soft purple glow
-    petal.material.color.setHex(TOKEN_ACCENT_PURPLE);
-    petal.material.emissive.setHex(TOKEN_ACCENT_PURPLE);
-    petal.material.emissiveIntensity = 0.4;
+    _makeItemMoonflowerPetal([-1.9, 1.8, -3.5]);
   }
 
   // Oil-soaked rag in a wall sconce
   if (!state.inventory.items.some((i) => i.itemId === 'oil-soaked-rag')) {
-    _makeItemBox([1.8, 2.3, 0.2], 'item-oil-soaked-rag', 'Oil-soaked rag in wall sconce');
+    _makeItemOilSoakedRag([1.8, 2.3, 0.2]);
   }
 
   // Doors to other rooms — arranged along the corridor walls
@@ -539,14 +691,12 @@ function _buildKitchen() {
 
   // Pinch of salt on shelf
   if (!state.inventory.items.some((i) => i.itemId === 'pinch-of-salt')) {
-    _makeItemBox([-2.2, 1.95, 0.1], 'item-pinch-of-salt', 'Pinch of salt on shelf');
+    _makeItemPinchOfSalt([-2.2, 1.95, 0.1]);
   }
 
   // Dried mushroom on shelf
   if (!state.inventory.items.some((i) => i.itemId === 'dried-mushroom')) {
-    const mushroom = _makeItemBox([-2.2, 1.95, -0.3], 'item-dried-mushroom', 'Dried mushroom on shelf');
-    mushroom.material.color.setHex(0x8a6040);
-    mushroom.material.emissive.setHex(0x000000);
+    _makeItemDriedMushroom([-2.2, 1.95, -0.3]);
   }
 
   // Back door to corridor
@@ -578,8 +728,7 @@ function _buildLibrary() {
   // Symbol order scroll on desk (readable clue — not consumed)
   const state = getState();
   if (!state.inventory.items.some((i) => i.itemId === 'symbol-order-scroll')) {
-    const scroll = _makeBox(0.3, 0.05, 0.5, 0xe8d8a0, [0.5, 0.97, -0.5], { roughness: 0.6 });
-    _addInteractable(scroll, 'item-symbol-order-scroll', 'Symbol order scroll (readable clue)', 'item');
+    _makeItemSymbolOrderScroll([0.5, 0.97, -0.5]);
   }
 
   // Locked cabinet (puzzle target)
@@ -589,7 +738,7 @@ function _buildLibrary() {
 
   // Torn spell book page inside cabinet — only visible after solve
   if (cabinetPuzzleSolved && !state.inventory.items.some((i) => i.itemId === 'torn-spell-book-page')) {
-    _makeItemBox([-2.0, 1.2, -D / 2 + 0.5], 'item-torn-spell-book-page', 'Torn spell book page');
+    _makeItemTornSpellBookPage([-2.0, 1.2, -D / 2 + 0.5]);
   }
 
   // Back door to corridor
@@ -624,7 +773,7 @@ function _buildGreatHall() {
 
   // Armoury chest key behind portrait — only visible after solve
   if (portraitSolved && !state.inventory.items.some((i) => i.itemId === 'armoury-chest-key')) {
-    _makeItemBox([0, 0.5, -D / 2 + 0.5], 'item-armoury-chest-key', 'Armoury chest key (hidden behind portrait)');
+    _makeItemArmouryChestKey([0, 0.5, -D / 2 + 0.5]);
   }
 
   // Portrait clue observation point
@@ -668,7 +817,7 @@ function _buildChapel() {
 
   // Chapel sigil in altar drawer — visible after solve
   if (altarSolved && !state.inventory.items.some((i) => i.itemId === 'chapel-sigil')) {
-    _makeItemBox([0, 0.8, -D / 2 + 1.5], 'item-chapel-sigil', 'Chapel sigil (take from altar drawer)');
+    _makeItemChapelSigil([0, 0.8, -D / 2 + 1.5]);
   }
 
   // Back door to corridor
@@ -701,7 +850,7 @@ function _buildArmoury() {
 
   // Iron gate key inside chest — visible after solve
   if (chestSolved && !state.inventory.items.some((i) => i.itemId === 'iron-gate-key')) {
-    _makeItemBox([1.5, 0.85, D / 2 - 1.5], 'item-iron-gate-key', 'Iron gate key (take from chest)');
+    _makeItemIronGateKey([1.5, 0.85, D / 2 - 1.5]);
   }
 
   // Back door to corridor
@@ -738,7 +887,7 @@ function _buildTowerRoom() {
 
   // Star chart panel — revealed after solve
   if (telescopeSolved && !state.inventory.items.some((i) => i.itemId === 'brass-star-chart')) {
-    _makeItemBox([0.5, 1.85, -0.5], 'item-brass-star-chart', 'Brass star chart (take from opened panel)');
+    _makeItemBrassStarChart([0.5, 1.85, -0.5]);
   }
 
   // Back door to corridor
@@ -778,10 +927,7 @@ function _buildWitchsStudy() {
 
   // Charged binding crystal — visible after solve
   if (spellSolved && !state.inventory.items.some((i) => i.itemId === 'charged-binding-crystal')) {
-    const crystal = _makeItemBox([0.5, 1.2, 0.5], 'item-charged-binding-crystal', 'Charged binding crystal');
-    crystal.material.color.setHex(TOKEN_ACCENT_PURPLE);
-    crystal.material.emissive.setHex(TOKEN_ACCENT_PURPLE);
-    crystal.material.emissiveIntensity = 0.7;
+    _makeItemChargedBindingCrystal([0.5, 1.2, 0.5]);
   }
 
   // Back door to corridor
