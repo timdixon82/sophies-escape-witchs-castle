@@ -290,7 +290,7 @@ function _makeBox(w, h, d, color, pos, opts = {}) {
     color,
     roughness: opts.roughness ?? 0.8,
     metalness: opts.metalness ?? 0.0,
-    emissive: opts.emissive ?? 0x000000,
+    emissive: opts.emissive ?? 0xffffff,
     emissiveIntensity: opts.emissiveIntensity ?? 0.0,
   });
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -299,7 +299,12 @@ function _makeBox(w, h, d, color, pos, opts = {}) {
 }
 
 function _makeCylinder(rt, rb, h, color, pos) {
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
+  const mat = new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.7,
+    emissive: 0xffffff,
+    emissiveIntensity: 0.0,
+  });
   const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, 12), mat);
   mesh.position.set(...pos);
   return mesh;
