@@ -267,25 +267,29 @@ function _buildRoom(roomId) {
 
 /**
  * Creates a box-room (6 planes: floor, ceiling, 4 walls).
- * @param {{ color: number, w: number, h: number, d: number }} opts
- * @returns {{ ambient: THREE.AmbientLight, stone: THREE.MeshStandardMaterial }}
+ * Floor and ceiling use distinct materials derived from the wall colour
+ * unless explicit overrides are provided.
+ * @param {{ color: number, w: number, h: number, d: number, ambientIntensity?: number, floorColor?: number, ceilColor?: number }} opts
+ * @returns {{ ambient: THREE.AmbientLight }}
  */
-function _makeBoxRoom({ color, w, h, d, ambientIntensity = 0.65 }) {
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0.0 });
+function _makeBoxRoom({ color, w, h, d, ambientIntensity = 0.65, floorColor, ceilColor }) {
+  const wallMat  = new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0.0 });
+  const floorMat = new THREE.MeshStandardMaterial({ color: floorColor ?? _darken(color, 0.85), roughness: 0.98, metalness: 0.0 });
+  const ceilMat  = new THREE.MeshStandardMaterial({ color: ceilColor  ?? _lighten(color, 1.1),  roughness: 0.90, metalness: 0.0 });
 
   const planes = [
     // floor
-    _makePlane(w, d, mat, [0, 0, 0], [-Math.PI / 2, 0, 0]),
+    _makePlane(w, d, floorMat, [0, 0, 0], [-Math.PI / 2, 0, 0]),
     // ceiling
-    _makePlane(w, d, mat, [0, h, 0], [Math.PI / 2, 0, 0]),
+    _makePlane(w, d, ceilMat, [0, h, 0], [Math.PI / 2, 0, 0]),
     // back wall
-    _makePlane(w, h, mat, [0, h / 2, -d / 2], [0, 0, 0]),
+    _makePlane(w, h, wallMat, [0, h / 2, -d / 2], [0, 0, 0]),
     // front wall
-    _makePlane(w, h, mat, [0, h / 2, d / 2], [0, Math.PI, 0]),
+    _makePlane(w, h, wallMat, [0, h / 2, d / 2], [0, Math.PI, 0]),
     // left wall
-    _makePlane(d, h, mat, [-w / 2, h / 2, 0], [0, Math.PI / 2, 0]),
+    _makePlane(d, h, wallMat, [-w / 2, h / 2, 0], [0, Math.PI / 2, 0]),
     // right wall
-    _makePlane(d, h, mat, [w / 2, h / 2, 0], [0, -Math.PI / 2, 0]),
+    _makePlane(d, h, wallMat, [w / 2, h / 2, 0], [0, -Math.PI / 2, 0]),
   ];
 
   for (const p of planes) _add(p);
@@ -293,7 +297,21 @@ function _makeBoxRoom({ color, w, h, d, ambientIntensity = 0.65 }) {
   const ambient = new THREE.AmbientLight(TOKEN_FG_PRIMARY, ambientIntensity);
   _add(ambient);
 
-  return { mat, ambient };
+  return { ambient };
+}
+
+function _darken(hex, factor) {
+  const r = Math.round(((hex >> 16) & 0xff) * factor);
+  const g = Math.round(((hex >> 8)  & 0xff) * factor);
+  const b = Math.round(( hex        & 0xff) * factor);
+  return (r << 16) | (g << 8) | b;
+}
+
+function _lighten(hex, factor) {
+  const r = Math.min(255, Math.round(((hex >> 16) & 0xff) * factor));
+  const g = Math.min(255, Math.round(((hex >> 8)  & 0xff) * factor));
+  const b = Math.min(255, Math.round(( hex        & 0xff) * factor));
+  return (r << 16) | (g << 8) | b;
 }
 
 function _makePlane(w, h, mat, pos, rot) {
@@ -481,7 +499,7 @@ function _buildStoneCorridor() {
 
 function _buildKitchen() {
   const W = 5, H = 3.2, D = 6;
-  _makeBoxRoom({ color: COLOURS.kitchen, w: W, h: H, d: D, ambientIntensity: 0.3 });
+  _makeBoxRoom({ color: COLOURS.kitchen, w: W, h: H, d: D, ambientIntensity: 0.3, floorColor: 0x6a3a20 });
 
   // Warm ceiling point light for depth and visibility
   const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
@@ -607,7 +625,7 @@ function _buildGreatHall() {
 
 function _buildChapel() {
   const W = 6, H = 5, D = 8;
-  _makeBoxRoom({ color: COLOURS.chapel, w: W, h: H, d: D, ambientIntensity: 0.15 });
+  _makeBoxRoom({ color: COLOURS.chapel, w: W, h: H, d: D, ambientIntensity: 0.15, floorColor: 0x25253a });
 
   // Warm ceiling point light for depth and visibility
   const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
@@ -677,7 +695,7 @@ function _buildArmoury() {
 
 function _buildTowerRoom() {
   const W = 5, H = 5, D = 5;
-  _makeBoxRoom({ color: COLOURS.towerRoom, w: W, h: H, d: D, ambientIntensity: 0.1 });
+  _makeBoxRoom({ color: COLOURS.towerRoom, w: W, h: H, d: D, ambientIntensity: 0.1, floorColor: 0x1e2430 });
 
   // Warm ceiling point light for depth and visibility
   const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
