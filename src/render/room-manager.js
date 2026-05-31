@@ -401,13 +401,34 @@ function _makeItemBox(pos, id, label) {
 }
 
 /**
- * Creates a door mesh — dark recessed box on a wall.
- * The door is clickable if unlocked.
+ * Creates a door group: panel, four-piece stone frame, and an iron handle.
+ * The panel is the interactable mesh; frame and handle are decorative.
  */
 function _makeDoor(pos, targetRoomId, label) {
-  const mesh = _makeBox(0.9, 1.8, 0.1, 0x1e1a14, pos, { roughness: 1.0 });
-  _addInteractable(mesh, `door-${targetRoomId}`, label, 'door');
-  return mesh;
+  // Door panel (interactable)
+  const panel = _makeBox(0.9, 1.8, 0.12, 0x2a1e12, pos, { roughness: 0.95, metalness: 0.0 });
+  _addInteractable(panel, `door-${targetRoomId}`, label, 'door');
+
+  // Frame: two vertical stiles and two horizontal rails
+  const [px, py, pz] = pos;
+  const frameColor = 0x3d3028;
+  // Left stile
+  _add(_makeBox(0.1, 2.0, 0.14, frameColor, [px - 0.5, py, pz], { roughness: 1.0 }));
+  // Right stile
+  _add(_makeBox(0.1, 2.0, 0.14, frameColor, [px + 0.5, py, pz], { roughness: 1.0 }));
+  // Top rail
+  _add(_makeBox(1.1, 0.12, 0.14, frameColor, [px, py + 0.96, pz], { roughness: 1.0 }));
+  // Bottom rail / threshold
+  _add(_makeBox(1.1, 0.10, 0.14, frameColor, [px, py - 0.95, pz], { roughness: 1.0 }));
+
+  // Handle: small iron cylinder on the right side of the door
+  const handle = _makeCylinder(0.028, 0.028, 0.14, 0x707070, [px + 0.32, py + 0.05, pz]);
+  handle.rotation.z = Math.PI / 2;
+  handle.material.metalness = 0.8;
+  handle.material.roughness = 0.35;
+  _add(handle);
+
+  return panel;
 }
 
 // ─── Room 1: Dungeon Cell ────────────────────────────────────────────────────
