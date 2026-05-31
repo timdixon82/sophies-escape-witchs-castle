@@ -457,20 +457,6 @@ function _makeItemDriedMushroom(pos) {
   return stem;
 }
 
-function _makeItemSmallIronKey(pos) {
-  const label = ITEMS['small-iron-key'].label;
-  // Shaft (interactable)
-  const shaft = _makeBox(0.05, 0.05, 0.22, 0x707070, pos, { metalness: 0.7, roughness: 0.4 });
-  _addInteractable(shaft, 'item-small-iron-key', label, 'item');
-  _attachItemLabel(shaft, label);
-  // Bow (decorative torus)
-  const bowGeo = new THREE.TorusGeometry(0.05, 0.018, 8, 16);
-  const bowMat = new THREE.MeshStandardMaterial({ color: 0x707070, metalness: 0.7, roughness: 0.4, emissive: 0xffffff, emissiveIntensity: 0.0 });
-  const bow = new THREE.Mesh(bowGeo, bowMat);
-  bow.position.set(pos[0], pos[1], pos[2] - 0.11);
-  _add(bow);
-  return shaft;
-}
 
 function _makeItemSymbolOrderScroll(pos) {
   const label = ITEMS['symbol-order-scroll'].label;
