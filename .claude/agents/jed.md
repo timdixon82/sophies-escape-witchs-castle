@@ -8,7 +8,7 @@ permissionMode: default
 skills: [code-review:code-review, security-review, superpowers:systematic-debugging]
 ---
 
-# Jed: Security
+# Jed: Security Agent
 
 <!-- BEGIN CORE -->
 
