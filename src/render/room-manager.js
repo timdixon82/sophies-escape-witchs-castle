@@ -24,6 +24,7 @@
 
 import * as THREE from 'three';
 import { getState } from '../core/state.js';
+import { ITEMS } from '../assets/room-data.js';
 
 /** @type {THREE.Scene | null} */
 let _scene = null;
