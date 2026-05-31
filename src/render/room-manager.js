@@ -55,6 +55,19 @@ const COLOURS = {
   castleGate: 0x504840,     // aged stone (lightened)
 };
 
+const ROOM_FOG = {
+  'dungeon-cell':    { color: 0x1a1510, density: 0.18 },
+  'stone-corridor':  { color: 0x0e0e14, density: 0.10 },
+  kitchen:           { color: 0x1a0e06, density: 0.12 },
+  library:           { color: 0x0a0c12, density: 0.14 },
+  'great-hall':      { color: 0x100800, density: 0.08 },
+  chapel:            { color: 0x06060e, density: 0.12 },
+  armoury:           { color: 0x080808, density: 0.14 },
+  'tower-room':      { color: 0x060810, density: 0.12 },
+  'witchs-study':    { color: 0x0a0410, density: 0.16 },
+  'castle-gate':     { color: 0x101010, density: 0.06 },
+};
+
 const TOKEN_FG_PRIMARY = 0xf0eae0;
 const TOKEN_ACCENT_AMBER = 0xffa040;
 const TOKEN_ACCENT_GREEN = 0x7ed4a0;
@@ -184,6 +197,7 @@ export function updateItemLabels(camera, renderer) {
 // ─── Private: teardown ────────────────────────────────────────────────────────
 
 function _tearDownRoom() {
+  if (_scene) _scene.fog = null;
   for (const obj of _roomObjects) {
     // Remove the floating DOM label if this object has one.
     if (obj.userData && obj.userData.labelEl) {
@@ -209,6 +223,10 @@ function _tearDownRoom() {
 // ─── Private: room builders ───────────────────────────────────────────────────
 
 function _buildRoom(roomId) {
+  const fogCfg = ROOM_FOG[roomId] ?? { color: 0x0a0a0a, density: 0.12 };
+  _scene.background = new THREE.Color(fogCfg.color);
+  _scene.fog = new THREE.FogExp2(fogCfg.color, fogCfg.density);
+
   switch (roomId) {
     case 'dungeon-cell':
       _buildDungeonCell();
