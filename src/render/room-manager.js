@@ -619,6 +619,18 @@ function _buildDungeonCell() {
     _makeItemCandleStub([-1.8, 1.4, -2.0]);
   }
 
+  // Decorative geometry: stone pillars at front corners
+  _add(_makeCylinder(0.18, 0.20, H, 0x5a5550, [-W / 2 + 0.22, H / 2, D / 2 - 0.22]));
+  _add(_makeCylinder(0.18, 0.20, H, 0x5a5550, [W / 2 - 0.22, H / 2, D / 2 - 0.22]));
+
+  // Ceiling lintel beam above door
+  _add(_makeBox(1.1, 0.15, 0.2, 0x4a4540, [0, H - 0.08, -D / 2 + 0.1]));
+
+  // Iron bar slivers on right wall — barred window suggestion
+  for (let i = 0; i < 3; i++) {
+    _add(_makeBox(0.04, 0.5, 0.05, 0x303030, [W / 2 - 0.05, 1.8 + i * 0.15, -1.0]));
+  }
+
   // Cell door (back wall) — only interactable if dungeon-cell puzzle solved
   const door = _makeBox(0.9, 1.8, 0.1, 0x1e1a14, [0, 0.9, -D / 2 + 0.05], { roughness: 1.0 });
   _addInteractable(door, 'room1-door', 'Heavy wooden door (use bent spoon to open)', 'puzzle');
@@ -648,6 +660,21 @@ function _buildStoneCorridor() {
   // Oil-soaked rag in a wall sconce
   if (!state.inventory.items.some((i) => i.itemId === 'oil-soaked-rag')) {
     _makeItemOilSoakedRag([1.8, 2.3, 0.2]);
+  }
+
+  // Decorative geometry: skirting stones along both side walls
+  _add(_makeBox(D, 0.12, 0.1, 0x4a4844, [-W / 2 + 0.05, 0.06, 0]));
+  _add(_makeBox(D, 0.12, 0.1, 0x4a4844, [W / 2 - 0.05, 0.06, 0]));
+
+  // Six shallow alcove boxes for sconce lights (alternating sides)
+  const alcoveW = 0.08, alcoveH = 0.5, alcoveD = 0.05;
+  const alcoveColor = COLOURS.stoneCorridor;
+  const alcovePositions = [
+    [-W / 2 + 0.02, 2.2, -4], [W / 2 - 0.02, 2.2, 0], [-W / 2 + 0.02, 2.2, 4],
+    [W / 2 - 0.02, 2.2, -4], [-W / 2 + 0.02, 2.2, 0], [W / 2 - 0.02, 2.2, 4],
+  ];
+  for (const apos of alcovePositions) {
+    _add(_makeBox(alcoveW, alcoveH, alcoveD, alcoveColor, apos));
   }
 
   // Doors to other rooms — arranged along the corridor walls
@@ -699,6 +726,12 @@ function _buildKitchen() {
     _makeItemDriedMushroom([-2.2, 1.95, -0.3]);
   }
 
+  // Decorative geometry: pot-rack beam and hanging chains
+  _add(_makeBox(W - 0.6, 0.1, 0.1, 0x3a2810, [0, H - 0.1, -0.5]));
+  for (let i = 0; i < 3; i++) {
+    _add(_makeBox(0.04, 0.6, 0.04, 0x282020, [-0.6 + i * 0.6, H - 0.4, -0.5]));
+  }
+
   // Back door to corridor
   _makeDoor([0, 0.9, D / 2 - 0.05], 'stone-corridor', 'Door to Stone Corridor');
 }
@@ -740,6 +773,13 @@ function _buildLibrary() {
   if (cabinetPuzzleSolved && !state.inventory.items.some((i) => i.itemId === 'torn-spell-book-page')) {
     _makeItemTornSpellBookPage([-2.0, 1.2, -D / 2 + 0.5]);
   }
+
+  // Decorative geometry: bookcase columns at left wall
+  _add(_makeBox(0.15, H, 0.42, 0x1a2030, [-3.2, H / 2, -3.0]));
+  _add(_makeBox(0.15, H, 0.42, 0x1a2030, [-1.8, H / 2, -3.0]));
+
+  // Reading lectern cone beside desk
+  _add(_makeCylinder(0.0, 0.25, 0.6, 0x3a2810, [1.5, 0.3, -0.5]));
 
   // Back door to corridor
   _makeDoor([0, 0.9, D / 2 - 0.05], 'stone-corridor', 'Door to Stone Corridor');
@@ -785,6 +825,14 @@ function _buildGreatHall() {
     _addInteractable(clueTarget, 'examine-portrait-clue', 'Observe the portrait symbols (chalice, quill, star)', 'examine');
   }
 
+  // Decorative geometry: two large pillars partway down side walls
+  _add(_makeBox(0.5, H, 0.5, 0x4a4035, [-W / 2 + 0.6, H / 2, 0]));
+  _add(_makeBox(0.5, H, 0.5, 0x4a4035, [W / 2 - 0.6, H / 2, 0]));
+
+  // Banner boxes flanking the portrait wall
+  _add(_makeBox(0.4, 2.0, 0.06, 0x6a1a1a, [-2.4, 2.5, -D / 2 + 0.08]));
+  _add(_makeBox(0.4, 2.0, 0.06, 0x6a1a1a, [2.4, 2.5, -D / 2 + 0.08]));
+
   // Back door to corridor
   _makeDoor([0, 0.9, D / 2 - 0.05], 'stone-corridor', 'Door to Stone Corridor');
 }
@@ -820,6 +868,10 @@ function _buildChapel() {
     _makeItemChapelSigil([0, 0.8, -D / 2 + 1.5]);
   }
 
+  // Decorative geometry: tapered columns flanking the altar
+  _add(_makeCylinder(0.12, 0.18, H * 0.8, 0x2a2a40, [-1.2, H * 0.4, -D / 2 + 1.8]));
+  _add(_makeCylinder(0.12, 0.18, H * 0.8, 0x2a2a40, [1.2, H * 0.4, -D / 2 + 1.8]));
+
   // Back door to corridor
   _makeDoor([0, 0.9, D / 2 - 0.05], 'stone-corridor', 'Door to Stone Corridor');
 }
@@ -836,10 +888,17 @@ function _buildArmoury() {
   // Single amber corner torch
   _add(_makePointLight(0xffa040, 0.8, 5, 2, [2.5, 2.2, -D / 2 + 0.5]));
 
-  // Weapon racks (decorative)
+  // Weapon racks (decorative) — framed with uprights and horizontal bars
   for (let i = 0; i < 3; i++) {
-    const rack = _makeBox(0.1, 1.5, 0.05, 0x808080, [-2.5 + i * 2.5, 2.2, -D / 2 + 0.05], { roughness: 0.3, metalness: 0.7 });
-    _add(rack);
+    const x = -2.5 + i * 2.5;
+    // Left upright
+    _add(_makeBox(0.06, 1.4, 0.06, 0x707070, [x - 0.25, 1.5, -D / 2 + 0.08], { roughness: 0.3, metalness: 0.6 }));
+    // Right upright
+    _add(_makeBox(0.06, 1.4, 0.06, 0x707070, [x + 0.25, 1.5, -D / 2 + 0.08], { roughness: 0.3, metalness: 0.6 }));
+    // Top bar
+    _add(_makeBox(0.6, 0.06, 0.06, 0x808080, [x, 2.18, -D / 2 + 0.08], { roughness: 0.3, metalness: 0.6 }));
+    // Bottom bar
+    _add(_makeBox(0.6, 0.06, 0.06, 0x808080, [x, 0.82, -D / 2 + 0.08], { roughness: 0.3, metalness: 0.6 }));
   }
 
   // Chest (puzzle target)
@@ -890,6 +949,12 @@ function _buildTowerRoom() {
     _makeItemBrassStarChart([0.5, 1.85, -0.5]);
   }
 
+  // Decorative geometry: window sill blocks suggesting a window opening
+  _add(_makeBox(1.2, 0.12, 0.2, 0x445060, [-0.6, 2.0, -D / 2 + 0.1]));
+  _add(_makeBox(1.2, 0.12, 0.2, 0x445060, [0.6, 2.0, -D / 2 + 0.1]));
+  // Cross-bar between sill blocks
+  _add(_makeBox(0.12, 0.8, 0.15, 0x445060, [0, 1.6, -D / 2 + 0.1]));
+
   // Back door to corridor
   _makeDoor([0, 0.9, D / 2 - 0.05], 'stone-corridor', 'Door to Stone Corridor');
 }
@@ -929,6 +994,11 @@ function _buildWitchsStudy() {
   if (spellSolved && !state.inventory.items.some((i) => i.itemId === 'charged-binding-crystal')) {
     _makeItemChargedBindingCrystal([0.5, 1.2, 0.5]);
   }
+
+  // Decorative geometry: suspended spell bundles from ceiling
+  _add(_makeBox(0.2, 0.4, 0.2, 0x1a0820, [-0.8, H - 0.3, -1.0]));
+  _add(_makeBox(0.2, 0.4, 0.2, 0x1a0820, [0.4, H - 0.5, -1.2]));
+  _add(_makeBox(0.2, 0.4, 0.2, 0x1a0820, [-0.2, H - 0.2, -0.5]));
 
   // Back door to corridor
   _makeDoor([0, 0.9, D / 2 - 0.05], 'stone-corridor', 'Door to Stone Corridor');
@@ -971,6 +1041,10 @@ function _buildCastleGate() {
     const openGlow = _makePointLight(0xfff8e0, 3.0, 12, 2, [0, 2.5, -D / 2]);
     _add(openGlow);
   }
+
+  // Decorative geometry: large stone gate-pillar boxes flanking the bars
+  _add(_makeBox(0.5, H, 0.5, 0x5a5040, [-2.2, H / 2, -D / 2 + 0.3]));
+  _add(_makeBox(0.5, H, 0.5, 0x5a5040, [2.2, H / 2, -D / 2 + 0.3]));
 
   // Back door to corridor
   _makeDoor([0, 0.9, D / 2 - 0.05], 'stone-corridor', 'Door to Stone Corridor');
