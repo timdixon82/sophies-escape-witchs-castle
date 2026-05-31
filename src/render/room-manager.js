@@ -435,17 +435,17 @@ function _makeDoor(pos, targetRoomId, label) {
 
 function _buildDungeonCell() {
   const W = 5, H = 3.5, D = 6;
-  _makeBoxRoom({ color: COLOURS.dungeonCell, w: W, h: H, d: D });
+  _makeBoxRoom({ color: COLOURS.dungeonCell, w: W, h: H, d: D, ambientIntensity: 0.15 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Two amber torch sconces at low-to-mid height on side walls
+  _add(_makePointLight(TOKEN_ACCENT_AMBER, 1.2, 8, 2, [-1.8, 1.2, -1.5]));
+  _add(_makePointLight(TOKEN_ACCENT_AMBER, 1.2, 8, 2, [1.8, 1.2, -1.5]));
 
-  // Torch sconce (point light + visual mesh)
-  const torchLight = _makePointLight(TOKEN_ACCENT_AMBER, 1.5, 8, 2, [-1.5, 2.2, -1.5]);
-  _add(torchLight);
+  // Cold seeping-damp ground-level light near door
+  _add(_makePointLight(0x8090a0, 0.4, 3, 2, [0, 0.1, 0]));
 
-  const torch = _makeBox(0.15, 0.4, 0.1, TOKEN_ACCENT_AMBER, [-1.5, 2.2, -1.5], {
+  // Torch sconce visual mesh (left wall)
+  const torch = _makeBox(0.15, 0.4, 0.1, TOKEN_ACCENT_AMBER, [-1.5, 1.2, -1.5], {
     emissive: TOKEN_ACCENT_AMBER,
     emissiveIntensity: 0.8,
     roughness: 0.5,
@@ -472,16 +472,15 @@ function _buildDungeonCell() {
 
 function _buildStoneCorridor() {
   const W = 4, H = 3.5, D = 14;
-  _makeBoxRoom({ color: COLOURS.stoneCorridor, w: W, h: H, d: D, ambientIntensity: 0.2 });
+  _makeBoxRoom({ color: COLOURS.stoneCorridor, w: W, h: H, d: D, ambientIntensity: 0.1 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
-
-  // Wall sconces
+  // Wall sconces (existing rhythm, kept as-is)
   _add(_makePointLight(TOKEN_ACCENT_AMBER, 1.0, 6, 2, [-1.5, 2.5, -4]));
   _add(_makePointLight(TOKEN_ACCENT_AMBER, 1.0, 6, 2, [1.5, 2.5, 0]));
   _add(_makePointLight(TOKEN_ACCENT_AMBER, 1.0, 6, 2, [-1.5, 2.5, 4]));
+
+  // Cool blue ambient to give a sense of stone cold
+  _add(new THREE.AmbientLight(0xa0b0c0, 0.08));
 
   const state = getState();
 
@@ -520,14 +519,13 @@ function _buildStoneCorridor() {
 
 function _buildKitchen() {
   const W = 5, H = 3.2, D = 6;
-  _makeBoxRoom({ color: COLOURS.kitchen, w: W, h: H, d: D, ambientIntensity: 0.3, floorColor: 0x6a3a20 });
+  _makeBoxRoom({ color: COLOURS.kitchen, w: W, h: H, d: D, ambientIntensity: 0.35, floorColor: 0x6a3a20 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Strong fire glow under cauldron
+  _add(_makePointLight(0xff6010, 2.0, 6, 2, [0, 0.4, -1.5]));
 
-  // Fire glow
-  _add(_makePointLight(0xff6010, 1.2, 5, 2, [0, 0.5, -1.5]));
+  // Shelf warm light
+  _add(_makePointLight(0xffe0a0, 0.8, 4, 2, [-2.2, 2.2, 0]));
 
   // Cauldron (puzzle target)
   const cauldron = _makeCylinder(0.5, 0.4, 0.7, 0x222222, [0, 0.35, -1.5]);
@@ -559,14 +557,13 @@ function _buildKitchen() {
 
 function _buildLibrary() {
   const W = 6, H = 4, D = 7;
-  _makeBoxRoom({ color: COLOURS.library, w: W, h: H, d: D, ambientIntensity: 0.2 });
+  _makeBoxRoom({ color: COLOURS.library, w: W, h: H, d: D, ambientIntensity: 0.15 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Reading lamp over desk
+  _add(_makePointLight(0xffe0a0, 1.2, 5, 2, [0.5, 1.8, -0.5]));
 
-  // Reading lamp
-  _add(_makePointLight(0xffe0a0, 1.0, 5, 2, [0.5, 2.0, -0.5]));
+  // Cool general blue ambient for the book-filled space
+  _add(new THREE.AmbientLight(0x8090b0, 0.1));
 
   // Bookshelf rows (decorative boxes)
   for (let row = 0; row < 3; row++) {
@@ -603,14 +600,15 @@ function _buildLibrary() {
 
 function _buildGreatHall() {
   const W = 8, H = 5, D = 10;
-  _makeBoxRoom({ color: COLOURS.greatHall, w: W, h: H, d: D, ambientIntensity: 0.15 });
+  _makeBoxRoom({ color: COLOURS.greatHall, w: W, h: H, d: D, ambientIntensity: 0.1 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Strong fireplace glow at the front/fireplace wall
+  _add(_makePointLight(0xff5800, 2.0, 10, 2, [0, 0.8, D / 2 - 1.0]));
 
-  // Fireplace glow
-  _add(_makePointLight(0xff6010, 1.5, 8, 2, [0, 0.5, D / 2 - 1.5]));
+  // Portrait wall candles — three amber point lights
+  _add(_makePointLight(0xffa040, 0.5, 3, 2, [-3, 2.0, -D / 2 + 0.2]));
+  _add(_makePointLight(0xffa040, 0.5, 3, 2, [0, 2.0, -D / 2 + 0.2]));
+  _add(_makePointLight(0xffa040, 0.5, 3, 2, [3, 2.0, -D / 2 + 0.2]));
 
   // Portrait frames on walls (decorative)
   for (let i = 0; i < 3; i++) {
@@ -646,15 +644,14 @@ function _buildGreatHall() {
 
 function _buildChapel() {
   const W = 6, H = 5, D = 8;
-  _makeBoxRoom({ color: COLOURS.chapel, w: W, h: H, d: D, ambientIntensity: 0.15, floorColor: 0x25253a });
+  _makeBoxRoom({ color: COLOURS.chapel, w: W, h: H, d: D, ambientIntensity: 0.08, floorColor: 0x25253a });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Stained-glass coloured lights (raised to 1.2)
+  _add(_makePointLight(0x6040ff, 1.2, 8, 2, [-2.0, 3.5, 0]));
+  _add(_makePointLight(0xff4060, 1.2, 6, 2, [2.0, 3.5, 0]));
 
-  // Coloured light through windows
-  _add(_makePointLight(0x6040ff, 0.8, 8, 2, [-2.0, 3.5, 0]));
-  _add(_makePointLight(0xff4060, 0.6, 6, 2, [2.0, 3.5, 0]));
+  // Cold white skylight from above
+  _add(_makePointLight(0xe8f0ff, 0.8, 8, 2, [0, 4.5, 0]));
 
   // Altar (puzzle target)
   const state = getState();
@@ -682,14 +679,13 @@ function _buildChapel() {
 
 function _buildArmoury() {
   const W = 6, H = 3.5, D = 7;
-  _makeBoxRoom({ color: COLOURS.armoury, w: W, h: H, d: D, ambientIntensity: 0.2 });
+  _makeBoxRoom({ color: COLOURS.armoury, w: W, h: H, d: D, ambientIntensity: 0.15 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Cold blue-white overhead for the stone armoury
+  _add(_makePointLight(0xd0e0ff, 1.0, 10, 2, [0, 3.0, 0]));
 
-  // Torch
-  _add(_makePointLight(TOKEN_ACCENT_AMBER, 1.0, 6, 2, [0, 2.5, 0]));
+  // Single amber corner torch
+  _add(_makePointLight(0xffa040, 0.8, 5, 2, [2.5, 2.2, -D / 2 + 0.5]));
 
   // Weapon racks (decorative)
   for (let i = 0; i < 3; i++) {
@@ -716,14 +712,15 @@ function _buildArmoury() {
 
 function _buildTowerRoom() {
   const W = 5, H = 5, D = 5;
-  _makeBoxRoom({ color: COLOURS.towerRoom, w: W, h: H, d: D, ambientIntensity: 0.1, floorColor: 0x1e2430 });
+  _makeBoxRoom({ color: COLOURS.towerRoom, w: W, h: H, d: D, ambientIntensity: 0.08, floorColor: 0x1e2430 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Moonlight as a directional light from above-left
+  const moonlight = new THREE.DirectionalLight(0xc0d8ff, 1.5);
+  moonlight.position.set(0.5, 1, -0.5);
+  _add(moonlight);
 
-  // Moonlight from windows
-  _add(_makePointLight(0xc0d8ff, 1.2, 8, 2, [0, 3.5, 0]));
+  // Telescope accent point
+  _add(_makePointLight(0xffc040, 0.6, 3, 2, [0.5, 1.8, -0.5]));
 
   // Telescope (puzzle target)
   const state = getState();
@@ -752,14 +749,13 @@ function _buildTowerRoom() {
 
 function _buildWitchsStudy() {
   const W = 5, H = 4, D = 7;
-  _makeBoxRoom({ color: COLOURS.witchsStudy, w: W, h: H, d: D, ambientIntensity: 0.1 });
+  _makeBoxRoom({ color: COLOURS.witchsStudy, w: W, h: H, d: D, ambientIntensity: 0.08 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Purple magic glow (raised to 1.2)
+  _add(_makePointLight(TOKEN_ACCENT_PURPLE, 1.2, 6, 2, [0, 2.0, -1.0]));
 
-  // Purple magic glow
-  _add(_makePointLight(TOKEN_ACCENT_PURPLE, 0.8, 6, 2, [0, 2.0, -1.0]));
+  // Candle on desk — dim amber
+  _add(_makePointLight(0xffa040, 0.4, 3, 2, [0.5, 1.2, 0.5]));
 
   // Lectern (place torn page)
   const lectern = _makeBox(0.6, 1.2, 0.4, 0x300820, [0, 0.6, -1.5], { roughness: 0.8 });
@@ -798,12 +794,8 @@ function _buildCastleGate() {
   const W = 6, H = 5, D = 5;
   _makeBoxRoom({ color: COLOURS.castleGate, w: W, h: H, d: D, ambientIntensity: 0.3 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
-
-  // Daylight glow from the gate
-  _add(_makePointLight(0xfff8e0, 2.0, 10, 2, [0, 2.5, -D / 2 + 0.5]));
+  // Strong daylight glow from the gate (brighter, wider reach)
+  _add(_makePointLight(0xfff8e0, 3.5, 16, 2, [0, 2.5, -D / 2 + 0.5]));
 
   // Gate (visual — decorative bars)
   for (let i = -2; i <= 2; i++) {
@@ -842,11 +834,7 @@ function _buildCastleGate() {
 
 function _buildGenericRoom(_roomId) {
   _makeBoxRoom({ color: 0x2a2a2a, w: 5, h: 3.5, d: 6, ambientIntensity: 0.3 });
-
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
-
+  _add(_makePointLight(0xffc070, 1.0, 10, 2, [0, 2.8, 0]));
   _makeDoor([0, 0.9, 2.95], 'stone-corridor', 'Door to Stone Corridor');
 }
 
