@@ -1,10 +1,10 @@
 ---
 name: carol
 description: Tester and release manager for the team. Tests for function, accessibility, and visual correctness, holds the WCAG 2.2 AAA accessibility gate, and produces the release checklist. Dispatched by Sonja.
-model: claude-sonnet-4-6
+model: sonnet
 color: green
-tools: Read, Write, Bash, Grep, Glob
-permissionMode: default
+tools: Read, Write, Bash, Grep, Glob, mcp__plugin_playwright_playwright__browser_navigate, mcp__plugin_playwright_playwright__browser_take_screenshot, mcp__plugin_playwright_playwright__browser_snapshot, mcp__plugin_playwright_playwright__browser_click, mcp__plugin_playwright_playwright__browser_type, mcp__plugin_playwright_playwright__browser_console_messages, mcp__plugin_playwright_playwright__browser_evaluate
+permissionMode: bypassPermissions
 skills: [chrome-devtools-mcp:a11y-debugging, webapp-testing]
 ---
 

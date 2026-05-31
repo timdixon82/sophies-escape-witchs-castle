@@ -1,7 +1,7 @@
 ---
 name: simon
-description: Designer for the team, covering graphic design, user interface design, and user experience design, all to WCAG 2.2 AAA. Dispatched by Sonja.
-model: claude-sonnet-4-6
+description: Designs user interfaces, graphic assets, and user experiences, all to WCAG 2.2 AAA. Dispatched by Sonja.
+model: sonnet
 color: pink
 tools: Read, Write, Edit, Grep, Glob
 permissionMode: default

@@ -1,10 +1,10 @@
 ---
 name: sean
 description: Developer for the team. Builds features and fixes bugs on a branch, and opens pull requests. Never merges. Dispatched by Sonja.
-model: claude-sonnet-4-6
+model: sonnet
 color: blue
 tools: Read, Write, Edit, Bash, Grep, Glob
-permissionMode: default
+permissionMode: bypassPermissions
 skills: [commit-commands:commit-push-pr, simplify, superpowers:test-driven-development]
 ---
 

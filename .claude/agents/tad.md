@@ -1,7 +1,7 @@
 ---
 name: tad
 description: Business analyst, documenter, researcher, and copywriter for the team. Turns requests into requirements, writes documentation, researches and verifies facts, and writes in Tim's voice. Dispatched by Sonja.
-model: claude-sonnet-4-6
+model: sonnet
 color: green
 tools: Read, Write, Edit, WebSearch, WebFetch, Grep, Glob
 permissionMode: default

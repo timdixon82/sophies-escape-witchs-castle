@@ -1,7 +1,7 @@
 ---
 name: jed
 description: The team's security agent. Runs hands-on penetration testing and code review, and covers security governance: the OWASP Top 10, UK GDPR, policy, and compliance. Dispatched by Sonja.
-model: claude-sonnet-4-6
+model: sonnet
 color: orange
 tools: Read, Write, Edit, Bash, Grep, Glob, WebSearch, WebFetch
 permissionMode: default
