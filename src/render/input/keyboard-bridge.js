@@ -7,8 +7,8 @@
  * Control mapping (FR-CTRL-01):
  *   W / ArrowUp       → MOVE_FORWARD (held)
  *   S / ArrowDown     → MOVE_BACKWARD (held)
- *   A / ArrowLeft     → LOOK_LEFT (held)
- *   D / ArrowRight    → LOOK_RIGHT (held)
+ *   A / ArrowLeft     → MOVE_LEFT  (held) — strafe left
+ *   D / ArrowRight    → MOVE_RIGHT (held) — strafe right
  *   E / Enter         → INTERACT (one-shot)
  *   I                 → TOGGLE_INVENTORY (one-shot)
  *   H                 → TOGGLE_HINTS (one-shot)
@@ -116,12 +116,12 @@ function _onKeydown(e) {
     case 'a':
     case 'A':
     case 'ArrowLeft':
-      _held.add('LOOK_LEFT');
+      _held.add('MOVE_LEFT');
       break;
     case 'd':
     case 'D':
     case 'ArrowRight':
-      _held.add('LOOK_RIGHT');
+      _held.add('MOVE_RIGHT');
       break;
 
     // One-shot intents.
@@ -176,12 +176,12 @@ function _onKeyup(e) {
     case 'a':
     case 'A':
     case 'ArrowLeft':
-      _held.delete('LOOK_LEFT');
+      _held.delete('MOVE_LEFT');
       break;
     case 'd':
     case 'D':
     case 'ArrowRight':
-      _held.delete('LOOK_RIGHT');
+      _held.delete('MOVE_RIGHT');
       break;
     default:
       break;
