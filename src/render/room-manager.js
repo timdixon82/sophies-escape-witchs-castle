@@ -24,6 +24,7 @@
 
 import * as THREE from 'three';
 import { getState } from '../core/state.js';
+import { ITEMS } from '../assets/room-data.js';
 
 /** @type {THREE.Scene | null} */
 let _scene = null;
@@ -53,6 +54,19 @@ const COLOURS = {
   towerRoom: 0x445060,      // slate blue (lightened)
   witchsStudy: 0x3e2a3e,    // deep purple (lightened)
   castleGate: 0x504840,     // aged stone (lightened)
+};
+
+const ROOM_FOG = {
+  'dungeon-cell':    { color: 0x1a1510, density: 0.18 },
+  'stone-corridor':  { color: 0x0e0e14, density: 0.10 },
+  kitchen:           { color: 0x1a0e06, density: 0.12 },
+  library:           { color: 0x0a0c12, density: 0.14 },
+  'great-hall':      { color: 0x100800, density: 0.08 },
+  chapel:            { color: 0x06060e, density: 0.12 },
+  armoury:           { color: 0x080808, density: 0.14 },
+  'tower-room':      { color: 0x060810, density: 0.12 },
+  'witchs-study':    { color: 0x0a0410, density: 0.16 },
+  'castle-gate':     { color: 0x101010, density: 0.06 },
 };
 
 const TOKEN_FG_PRIMARY = 0xf0eae0;
@@ -108,6 +122,43 @@ export function enterRoom(roomId) {
   _currentRoomId = roomId;
   _buildRoom(roomId);
   _updateRoomLabel(roomId);
+}
+
+/**
+ * Removes a single item mesh from the scene by its itemId.
+ * Called by the interaction handler immediately after PICK_UP_ITEM dispatch.
+ * More surgical than rebuildCurrentRoom() — only the specific mesh is removed,
+ * so the keyboard nav list never briefly contains a stale entry.
+ * @param {string} itemId — the item ID without the 'item-' prefix, e.g. 'bent-spoon'
+ */
+export function removeItemMesh(itemId) {
+  const targetId = `item-${itemId}`;
+  const idx = _interactables.findIndex((m) => m.userData.id === targetId);
+  if (idx === -1) return;
+
+  const mesh = _interactables[idx];
+
+  // Remove the floating DOM label if present.
+  if (mesh.userData.labelEl) {
+    mesh.userData.labelEl.remove();
+    mesh.userData.labelEl = null;
+  }
+
+  // Remove from the Three.js scene and dispose GPU resources.
+  if (_scene) _scene.remove(mesh);
+  if (mesh.geometry) mesh.geometry.dispose();
+  if (mesh.material) {
+    if (Array.isArray(mesh.material)) {
+      for (const m of mesh.material) m.dispose();
+    } else {
+      mesh.material.dispose();
+    }
+  }
+
+  // Remove from both tracking arrays.
+  _interactables.splice(idx, 1);
+  const roomIdx = _roomObjects.indexOf(mesh);
+  if (roomIdx !== -1) _roomObjects.splice(roomIdx, 1);
 }
 
 /**
@@ -184,6 +235,7 @@ export function updateItemLabels(camera, renderer) {
 // ─── Private: teardown ────────────────────────────────────────────────────────
 
 function _tearDownRoom() {
+  if (_scene) _scene.fog = null;
   for (const obj of _roomObjects) {
     // Remove the floating DOM label if this object has one.
     if (obj.userData && obj.userData.labelEl) {
@@ -209,6 +261,10 @@ function _tearDownRoom() {
 // ─── Private: room builders ───────────────────────────────────────────────────
 
 function _buildRoom(roomId) {
+  const fogCfg = ROOM_FOG[roomId] ?? { color: 0x0a0a0a, density: 0.12 };
+  _scene.background = new THREE.Color(fogCfg.color);
+  _scene.fog = new THREE.FogExp2(fogCfg.color, fogCfg.density);
+
   switch (roomId) {
     case 'dungeon-cell':
       _buildDungeonCell();
@@ -249,25 +305,29 @@ function _buildRoom(roomId) {
 
 /**
  * Creates a box-room (6 planes: floor, ceiling, 4 walls).
- * @param {{ color: number, w: number, h: number, d: number }} opts
- * @returns {{ ambient: THREE.AmbientLight, stone: THREE.MeshStandardMaterial }}
+ * Floor and ceiling use distinct materials derived from the wall colour
+ * unless explicit overrides are provided.
+ * @param {{ color: number, w: number, h: number, d: number, ambientIntensity?: number, floorColor?: number, ceilColor?: number }} opts
+ * @returns {{ ambient: THREE.AmbientLight }}
  */
-function _makeBoxRoom({ color, w, h, d, ambientIntensity = 0.65 }) {
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0.0 });
+function _makeBoxRoom({ color, w, h, d, ambientIntensity = 0.65, floorColor, ceilColor }) {
+  const wallMat  = new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0.0 });
+  const floorMat = new THREE.MeshStandardMaterial({ color: floorColor ?? _darken(color, 0.85), roughness: 0.98, metalness: 0.0 });
+  const ceilMat  = new THREE.MeshStandardMaterial({ color: ceilColor  ?? _lighten(color, 1.1),  roughness: 0.90, metalness: 0.0 });
 
   const planes = [
     // floor
-    _makePlane(w, d, mat, [0, 0, 0], [-Math.PI / 2, 0, 0]),
+    _makePlane(w, d, floorMat, [0, 0, 0], [-Math.PI / 2, 0, 0]),
     // ceiling
-    _makePlane(w, d, mat, [0, h, 0], [Math.PI / 2, 0, 0]),
+    _makePlane(w, d, ceilMat, [0, h, 0], [Math.PI / 2, 0, 0]),
     // back wall
-    _makePlane(w, h, mat, [0, h / 2, -d / 2], [0, 0, 0]),
+    _makePlane(w, h, wallMat, [0, h / 2, -d / 2], [0, 0, 0]),
     // front wall
-    _makePlane(w, h, mat, [0, h / 2, d / 2], [0, Math.PI, 0]),
+    _makePlane(w, h, wallMat, [0, h / 2, d / 2], [0, Math.PI, 0]),
     // left wall
-    _makePlane(d, h, mat, [-w / 2, h / 2, 0], [0, Math.PI / 2, 0]),
+    _makePlane(d, h, wallMat, [-w / 2, h / 2, 0], [0, Math.PI / 2, 0]),
     // right wall
-    _makePlane(d, h, mat, [w / 2, h / 2, 0], [0, -Math.PI / 2, 0]),
+    _makePlane(d, h, wallMat, [w / 2, h / 2, 0], [0, -Math.PI / 2, 0]),
   ];
 
   for (const p of planes) _add(p);
@@ -275,7 +335,21 @@ function _makeBoxRoom({ color, w, h, d, ambientIntensity = 0.65 }) {
   const ambient = new THREE.AmbientLight(TOKEN_FG_PRIMARY, ambientIntensity);
   _add(ambient);
 
-  return { mat, ambient };
+  return { ambient };
+}
+
+function _darken(hex, factor) {
+  const r = Math.round(((hex >> 16) & 0xff) * factor);
+  const g = Math.round(((hex >> 8)  & 0xff) * factor);
+  const b = Math.round(( hex        & 0xff) * factor);
+  return (r << 16) | (g << 8) | b;
+}
+
+function _lighten(hex, factor) {
+  const r = Math.min(255, Math.round(((hex >> 16) & 0xff) * factor));
+  const g = Math.min(255, Math.round(((hex >> 8)  & 0xff) * factor));
+  const b = Math.min(255, Math.round(( hex        & 0xff) * factor));
+  return (r << 16) | (g << 8) | b;
 }
 
 function _makePlane(w, h, mat, pos, rot) {
@@ -290,7 +364,7 @@ function _makeBox(w, h, d, color, pos, opts = {}) {
     color,
     roughness: opts.roughness ?? 0.8,
     metalness: opts.metalness ?? 0.0,
-    emissive: opts.emissive ?? 0x000000,
+    emissive: opts.emissive ?? 0xffffff,
     emissiveIntensity: opts.emissiveIntensity ?? 0.0,
   });
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -299,7 +373,12 @@ function _makeBox(w, h, d, color, pos, opts = {}) {
 }
 
 function _makeCylinder(rt, rb, h, color, pos) {
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
+  const mat = new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.7,
+    emissive: 0xffffff,
+    emissiveIntensity: 0.0,
+  });
   const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, 12), mat);
   mesh.position.set(...pos);
   return mesh;
@@ -325,19 +404,12 @@ function _addInteractable(mesh, id, label, type) {
 }
 
 /**
- * Creates a glowing amber interactable item box.
- * Also creates a floating DOM label (aria-hidden, visual only) and stores it
- * on mesh.userData.labelEl so the render loop can reposition it each frame.
+ * Attaches a floating DOM label (aria-hidden, visual only) to a mesh.
+ * Stores it on mesh.userData.labelEl so the render loop can reposition it each frame.
+ * @param {THREE.Mesh} mesh
+ * @param {string} label
  */
-function _makeItemBox(pos, id, label) {
-  const mesh = _makeBox(0.25, 0.25, 0.25, TOKEN_ACCENT_AMBER, pos, {
-    emissive: TOKEN_ACCENT_AMBER,
-    emissiveIntensity: 0.5,
-    roughness: 0.4,
-  });
-  _addInteractable(mesh, id, label, 'item');
-
-  // Floating HTML label — visual only; the keyboard nav list is the accessible form.
+function _attachItemLabel(mesh, label) {
   const labelEl = document.createElement('div');
   labelEl.textContent = label;
   labelEl.setAttribute('aria-hidden', 'true');
@@ -355,35 +427,205 @@ function _makeItemBox(pos, id, label) {
   ].join(';');
   document.body.appendChild(labelEl);
   mesh.userData.labelEl = labelEl;
+}
 
+// ─── Per-item shape builders ──────────────────────────────────────────────────
+
+function _makeItemBentSpoon(pos) {
+  const label = ITEMS['bent-spoon'].label;
+  const mesh = _makeBox(0.05, 0.05, 0.4, 0xa0a0a0, pos, { metalness: 0.8, roughness: 0.3 });
+  mesh.rotation.z = 0.15;
+  _addInteractable(mesh, 'item-bent-spoon', label, 'item');
+  _attachItemLabel(mesh, label);
+  return mesh;
+}
+
+function _makeItemCandleStub(pos) {
+  const label = ITEMS['candle-stub'].label;
+  const mesh = _makeCylinder(0.055, 0.065, 0.18, 0xf0ead8, pos);
+  mesh.material.roughness = 0.7;
+  _addInteractable(mesh, 'item-candle-stub', label, 'item');
+  _attachItemLabel(mesh, label);
+  // Tiny amber wick light
+  const wickLight = new THREE.PointLight(0xffa040, 0.3, 0.6, 2);
+  wickLight.position.set(pos[0], pos[1] + 0.09 + 0.05, pos[2]);
+  _add(wickLight);
+  return mesh;
+}
+
+function _makeItemMoonflowerPetal(pos) {
+  const label = ITEMS['moonflower-petal'].label;
+  const mesh = _makeCylinder(0.18, 0.18, 0.025, TOKEN_ACCENT_PURPLE, pos);
+  mesh.material.emissive.setHex(TOKEN_ACCENT_PURPLE);
+  mesh.material.emissiveIntensity = 0.6;
+  _addInteractable(mesh, 'item-moonflower-petal', label, 'item');
+  _attachItemLabel(mesh, label);
+  return mesh;
+}
+
+function _makeItemOilSoakedRag(pos) {
+  const label = ITEMS['oil-soaked-rag'].label;
+  const mesh = _makeBox(0.22, 0.05, 0.18, 0x3a2a1a, pos, { roughness: 1.0 });
+  _addInteractable(mesh, 'item-oil-soaked-rag', label, 'item');
+  _attachItemLabel(mesh, label);
+  return mesh;
+}
+
+function _makeItemPinchOfSalt(pos) {
+  const label = ITEMS['pinch-of-salt'].label;
+  const mesh = _makeBox(0.10, 0.10, 0.10, 0xe8e8e0, pos, { roughness: 0.9 });
+  _addInteractable(mesh, 'item-pinch-of-salt', label, 'item');
+  _attachItemLabel(mesh, label);
+  // Small near-white light to make tiny cube catch the eye
+  const saltLight = new THREE.PointLight(0xf0f0e0, 0.15, 0.5, 2);
+  saltLight.position.set(pos[0], pos[1], pos[2]);
+  _add(saltLight);
+  return mesh;
+}
+
+function _makeItemDriedMushroom(pos) {
+  const label = ITEMS['dried-mushroom'].label;
+  // Stem (primary interactable)
+  const stem = _makeCylinder(0.04, 0.05, 0.10, 0x8a6040, pos);
+  _addInteractable(stem, 'item-dried-mushroom', label, 'item');
+  _attachItemLabel(stem, label);
+  // Cap (decorative, offset upward)
+  const cap = _makeCylinder(0.14, 0.08, 0.07, 0x6b4a28, [pos[0], pos[1] + 0.085, pos[2]]);
+  _add(cap);
+  return stem;
+}
+
+
+function _makeItemSymbolOrderScroll(pos) {
+  const label = ITEMS['symbol-order-scroll'].label;
+  const mesh = _makeCylinder(0.04, 0.04, 0.35, 0xe8d8a0, pos);
+  mesh.material.roughness = 0.7;
+  mesh.rotation.z = Math.PI / 2;
+  _addInteractable(mesh, 'item-symbol-order-scroll', label, 'item');
+  _attachItemLabel(mesh, label);
+  return mesh;
+}
+
+function _makeItemTornSpellBookPage(pos) {
+  const label = ITEMS['torn-spell-book-page'].label;
+  const mesh = _makeBox(0.32, 0.012, 0.42, 0xd4c080, pos, { roughness: 0.8 });
+  _addInteractable(mesh, 'item-torn-spell-book-page', label, 'item');
+  _attachItemLabel(mesh, label);
+  return mesh;
+}
+
+function _makeItemArmouryChestKey(pos) {
+  const label = ITEMS['armoury-chest-key'].label;
+  // Shaft (interactable)
+  const shaft = _makeBox(0.06, 0.06, 0.28, 0x505050, pos, { metalness: 0.8, roughness: 0.4 });
+  _addInteractable(shaft, 'item-armoury-chest-key', label, 'item');
+  _attachItemLabel(shaft, label);
+  // Bow (decorative torus)
+  const bowGeo = new THREE.TorusGeometry(0.06, 0.022, 8, 16);
+  const bowMat = new THREE.MeshStandardMaterial({ color: 0x505050, metalness: 0.8, roughness: 0.4, emissive: 0xffffff, emissiveIntensity: 0.0 });
+  const bow = new THREE.Mesh(bowGeo, bowMat);
+  bow.position.set(pos[0], pos[1], pos[2] - 0.14);
+  _add(bow);
+  return shaft;
+}
+
+function _makeItemChapelSigil(pos) {
+  const label = ITEMS['chapel-sigil'].label;
+  const mesh = _makeCylinder(0.15, 0.15, 0.05, 0x808090, pos);
+  mesh.material.roughness = 0.6;
+  mesh.material.emissive.setHex(TOKEN_ACCENT_PURPLE);
+  mesh.material.emissiveIntensity = 0.2;
+  _addInteractable(mesh, 'item-chapel-sigil', label, 'item');
+  _attachItemLabel(mesh, label);
+  return mesh;
+}
+
+function _makeItemIronGateKey(pos) {
+  const label = ITEMS['iron-gate-key'].label;
+  // Shaft (interactable)
+  const shaft = _makeBox(0.07, 0.07, 0.32, 0x505050, pos, { metalness: 0.8, roughness: 0.4 });
+  _addInteractable(shaft, 'item-iron-gate-key', label, 'item');
+  _attachItemLabel(shaft, label);
+  // Bow (decorative torus)
+  const bowGeo = new THREE.TorusGeometry(0.07, 0.026, 8, 16);
+  const bowMat = new THREE.MeshStandardMaterial({ color: 0x505050, metalness: 0.8, roughness: 0.4, emissive: 0xffffff, emissiveIntensity: 0.0 });
+  const bow = new THREE.Mesh(bowGeo, bowMat);
+  bow.position.set(pos[0], pos[1], pos[2] - 0.16);
+  _add(bow);
+  return shaft;
+}
+
+function _makeItemBrassStarChart(pos) {
+  const label = ITEMS['brass-star-chart'].label;
+  const mesh = _makeBox(0.28, 0.025, 0.28, 0xc09030, pos, { metalness: 0.7, roughness: 0.3, emissive: 0xffc040, emissiveIntensity: 0.15 });
+  _addInteractable(mesh, 'item-brass-star-chart', label, 'item');
+  _attachItemLabel(mesh, label);
+  return mesh;
+}
+
+function _makeItemChargedBindingCrystal(pos) {
+  const label = ITEMS['charged-binding-crystal'].label;
+  const geo = new THREE.SphereGeometry(0.12, 12, 12);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x9060d0,
+    emissive: TOKEN_ACCENT_PURPLE,
+    emissiveIntensity: 0.8,
+    roughness: 0.3,
+    metalness: 0.1,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(...pos);
+  _addInteractable(mesh, 'item-charged-binding-crystal', label, 'item');
+  _attachItemLabel(mesh, label);
   return mesh;
 }
 
 /**
- * Creates a door mesh — dark recessed box on a wall.
- * The door is clickable if unlocked.
+ * Creates a door group: panel, four-piece stone frame, and an iron handle.
+ * The panel is the interactable mesh; frame and handle are decorative.
  */
 function _makeDoor(pos, targetRoomId, label) {
-  const mesh = _makeBox(0.9, 1.8, 0.1, 0x1e1a14, pos, { roughness: 1.0 });
-  _addInteractable(mesh, `door-${targetRoomId}`, label, 'door');
-  return mesh;
+  // Door panel (interactable)
+  const panel = _makeBox(0.9, 1.8, 0.12, 0x2a1e12, pos, { roughness: 0.95, metalness: 0.0 });
+  _addInteractable(panel, `door-${targetRoomId}`, label, 'door');
+
+  // Frame: two vertical stiles and two horizontal rails
+  const [px, py, pz] = pos;
+  const frameColor = 0x3d3028;
+  // Left stile
+  _add(_makeBox(0.1, 2.0, 0.14, frameColor, [px - 0.5, py, pz], { roughness: 1.0 }));
+  // Right stile
+  _add(_makeBox(0.1, 2.0, 0.14, frameColor, [px + 0.5, py, pz], { roughness: 1.0 }));
+  // Top rail
+  _add(_makeBox(1.1, 0.12, 0.14, frameColor, [px, py + 0.96, pz], { roughness: 1.0 }));
+  // Bottom rail / threshold
+  _add(_makeBox(1.1, 0.10, 0.14, frameColor, [px, py - 0.95, pz], { roughness: 1.0 }));
+
+  // Handle: small iron cylinder on the right side of the door
+  const handle = _makeCylinder(0.028, 0.028, 0.14, 0x707070, [px + 0.32, py + 0.05, pz]);
+  handle.rotation.z = Math.PI / 2;
+  handle.material.metalness = 0.8;
+  handle.material.roughness = 0.35;
+  _add(handle);
+
+  return panel;
 }
 
 // ─── Room 1: Dungeon Cell ────────────────────────────────────────────────────
 
 function _buildDungeonCell() {
   const W = 5, H = 3.5, D = 6;
-  _makeBoxRoom({ color: COLOURS.dungeonCell, w: W, h: H, d: D });
+  _makeBoxRoom({ color: COLOURS.dungeonCell, w: W, h: H, d: D, ambientIntensity: 0.15 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Two amber torch sconces at low-to-mid height on side walls
+  _add(_makePointLight(TOKEN_ACCENT_AMBER, 1.2, 8, 2, [-1.8, 1.2, -1.5]));
+  _add(_makePointLight(TOKEN_ACCENT_AMBER, 1.2, 8, 2, [1.8, 1.2, -1.5]));
 
-  // Torch sconce (point light + visual mesh)
-  const torchLight = _makePointLight(TOKEN_ACCENT_AMBER, 1.5, 8, 2, [-1.5, 2.2, -1.5]);
-  _add(torchLight);
+  // Cold seeping-damp ground-level light near door
+  _add(_makePointLight(0x8090a0, 0.4, 3, 2, [0, 0.1, 0]));
 
-  const torch = _makeBox(0.15, 0.4, 0.1, TOKEN_ACCENT_AMBER, [-1.5, 2.2, -1.5], {
+  // Torch sconce visual mesh (left wall)
+  const torch = _makeBox(0.15, 0.4, 0.1, TOKEN_ACCENT_AMBER, [-1.5, 1.2, -1.5], {
     emissive: TOKEN_ACCENT_AMBER,
     emissiveIntensity: 0.8,
     roughness: 0.5,
@@ -393,12 +635,24 @@ function _buildDungeonCell() {
   // Loose stone on the floor (item: bent-spoon)
   const state = getState();
   if (!state.inventory.items.some((i) => i.itemId === 'bent-spoon')) {
-    _makeItemBox([0.6, 0.13, 1.5], 'item-bent-spoon', 'Loose stone (Bent spoon underneath)');
+    _makeItemBentSpoon([0.6, 0.13, 1.5]);
   }
 
   // Candle on a shelf (item: candle-stub)
   if (!state.inventory.items.some((i) => i.itemId === 'candle-stub')) {
-    _makeItemBox([-1.8, 1.4, -2.0], 'item-candle-stub', 'Candle stub on a shelf');
+    _makeItemCandleStub([-1.8, 1.4, -2.0]);
+  }
+
+  // Decorative geometry: stone pillars at front corners
+  _add(_makeCylinder(0.18, 0.20, H, 0x5a5550, [-W / 2 + 0.22, H / 2, D / 2 - 0.22]));
+  _add(_makeCylinder(0.18, 0.20, H, 0x5a5550, [W / 2 - 0.22, H / 2, D / 2 - 0.22]));
+
+  // Ceiling lintel beam above door
+  _add(_makeBox(1.1, 0.15, 0.2, 0x4a4540, [0, H - 0.08, -D / 2 + 0.1]));
+
+  // Iron bar slivers on right wall — barred window suggestion
+  for (let i = 0; i < 3; i++) {
+    _add(_makeBox(0.04, 0.5, 0.05, 0x303030, [W / 2 - 0.05, 1.8 + i * 0.15, -1.0]));
   }
 
   // Cell door (back wall) — only interactable if dungeon-cell puzzle solved
@@ -410,31 +664,41 @@ function _buildDungeonCell() {
 
 function _buildStoneCorridor() {
   const W = 4, H = 3.5, D = 14;
-  _makeBoxRoom({ color: COLOURS.stoneCorridor, w: W, h: H, d: D, ambientIntensity: 0.2 });
+  _makeBoxRoom({ color: COLOURS.stoneCorridor, w: W, h: H, d: D, ambientIntensity: 0.1 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
-
-  // Wall sconces
+  // Wall sconces (existing rhythm, kept as-is)
   _add(_makePointLight(TOKEN_ACCENT_AMBER, 1.0, 6, 2, [-1.5, 2.5, -4]));
   _add(_makePointLight(TOKEN_ACCENT_AMBER, 1.0, 6, 2, [1.5, 2.5, 0]));
   _add(_makePointLight(TOKEN_ACCENT_AMBER, 1.0, 6, 2, [-1.5, 2.5, 4]));
+
+  // Cool blue ambient to give a sense of stone cold
+  _add(new THREE.AmbientLight(0xa0b0c0, 0.08));
 
   const state = getState();
 
   // Moonflower petal in wall alcove (left wall)
   if (!state.inventory.items.some((i) => i.itemId === 'moonflower-petal')) {
-    const petal = _makeItemBox([-1.9, 1.8, -3.5], 'item-moonflower-petal', 'Moonflower petal in alcove');
-    // Give it a soft purple glow
-    petal.material.color.setHex(TOKEN_ACCENT_PURPLE);
-    petal.material.emissive.setHex(TOKEN_ACCENT_PURPLE);
-    petal.material.emissiveIntensity = 0.4;
+    _makeItemMoonflowerPetal([-1.9, 1.8, -3.5]);
   }
 
   // Oil-soaked rag in a wall sconce
   if (!state.inventory.items.some((i) => i.itemId === 'oil-soaked-rag')) {
-    _makeItemBox([1.8, 2.3, 0.2], 'item-oil-soaked-rag', 'Oil-soaked rag in wall sconce');
+    _makeItemOilSoakedRag([1.8, 2.3, 0.2]);
+  }
+
+  // Decorative geometry: skirting stones along both side walls
+  _add(_makeBox(D, 0.12, 0.1, 0x4a4844, [-W / 2 + 0.05, 0.06, 0]));
+  _add(_makeBox(D, 0.12, 0.1, 0x4a4844, [W / 2 - 0.05, 0.06, 0]));
+
+  // Six shallow alcove boxes for sconce lights (alternating sides)
+  const alcoveW = 0.08, alcoveH = 0.5, alcoveD = 0.05;
+  const alcoveColor = COLOURS.stoneCorridor;
+  const alcovePositions = [
+    [-W / 2 + 0.02, 2.2, -4], [W / 2 - 0.02, 2.2, 0], [-W / 2 + 0.02, 2.2, 4],
+    [W / 2 - 0.02, 2.2, -4], [-W / 2 + 0.02, 2.2, 0], [W / 2 - 0.02, 2.2, 4],
+  ];
+  for (const apos of alcovePositions) {
+    _add(_makeBox(alcoveW, alcoveH, alcoveD, alcoveColor, apos));
   }
 
   // Doors to other rooms — arranged along the corridor walls
@@ -458,14 +722,13 @@ function _buildStoneCorridor() {
 
 function _buildKitchen() {
   const W = 5, H = 3.2, D = 6;
-  _makeBoxRoom({ color: COLOURS.kitchen, w: W, h: H, d: D, ambientIntensity: 0.3 });
+  _makeBoxRoom({ color: COLOURS.kitchen, w: W, h: H, d: D, ambientIntensity: 0.35, floorColor: 0x6a3a20 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Strong fire glow under cauldron
+  _add(_makePointLight(0xff6010, 2.0, 6, 2, [0, 0.4, -1.5]));
 
-  // Fire glow
-  _add(_makePointLight(0xff6010, 1.2, 5, 2, [0, 0.5, -1.5]));
+  // Shelf warm light
+  _add(_makePointLight(0xffe0a0, 0.8, 4, 2, [-2.2, 2.2, 0]));
 
   // Cauldron (puzzle target)
   const cauldron = _makeCylinder(0.5, 0.4, 0.7, 0x222222, [0, 0.35, -1.5]);
@@ -479,14 +742,18 @@ function _buildKitchen() {
 
   // Pinch of salt on shelf
   if (!state.inventory.items.some((i) => i.itemId === 'pinch-of-salt')) {
-    _makeItemBox([-2.2, 1.95, 0.1], 'item-pinch-of-salt', 'Pinch of salt on shelf');
+    _makeItemPinchOfSalt([-2.2, 1.95, 0.1]);
   }
 
   // Dried mushroom on shelf
   if (!state.inventory.items.some((i) => i.itemId === 'dried-mushroom')) {
-    const mushroom = _makeItemBox([-2.2, 1.95, -0.3], 'item-dried-mushroom', 'Dried mushroom on shelf');
-    mushroom.material.color.setHex(0x8a6040);
-    mushroom.material.emissive.setHex(0x000000);
+    _makeItemDriedMushroom([-2.2, 1.95, -0.3]);
+  }
+
+  // Decorative geometry: pot-rack beam and hanging chains
+  _add(_makeBox(W - 0.6, 0.1, 0.1, 0x3a2810, [0, H - 0.1, -0.5]));
+  for (let i = 0; i < 3; i++) {
+    _add(_makeBox(0.04, 0.6, 0.04, 0x282020, [-0.6 + i * 0.6, H - 0.4, -0.5]));
   }
 
   // Back door to corridor
@@ -497,14 +764,13 @@ function _buildKitchen() {
 
 function _buildLibrary() {
   const W = 6, H = 4, D = 7;
-  _makeBoxRoom({ color: COLOURS.library, w: W, h: H, d: D, ambientIntensity: 0.2 });
+  _makeBoxRoom({ color: COLOURS.library, w: W, h: H, d: D, ambientIntensity: 0.15 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Reading lamp over desk
+  _add(_makePointLight(0xffe0a0, 1.2, 5, 2, [0.5, 1.8, -0.5]));
 
-  // Reading lamp
-  _add(_makePointLight(0xffe0a0, 1.0, 5, 2, [0.5, 2.0, -0.5]));
+  // Cool general blue ambient for the book-filled space
+  _add(new THREE.AmbientLight(0x8090b0, 0.1));
 
   // Bookshelf rows (decorative boxes)
   for (let row = 0; row < 3; row++) {
@@ -519,8 +785,7 @@ function _buildLibrary() {
   // Symbol order scroll on desk (readable clue — not consumed)
   const state = getState();
   if (!state.inventory.items.some((i) => i.itemId === 'symbol-order-scroll')) {
-    const scroll = _makeBox(0.3, 0.05, 0.5, 0xe8d8a0, [0.5, 0.97, -0.5], { roughness: 0.6 });
-    _addInteractable(scroll, 'item-symbol-order-scroll', 'Symbol order scroll (readable clue)', 'item');
+    _makeItemSymbolOrderScroll([0.5, 0.97, -0.5]);
   }
 
   // Locked cabinet (puzzle target)
@@ -530,8 +795,15 @@ function _buildLibrary() {
 
   // Torn spell book page inside cabinet — only visible after solve
   if (cabinetPuzzleSolved && !state.inventory.items.some((i) => i.itemId === 'torn-spell-book-page')) {
-    _makeItemBox([-2.0, 1.2, -D / 2 + 0.5], 'item-torn-spell-book-page', 'Torn spell book page');
+    _makeItemTornSpellBookPage([-2.0, 1.2, -D / 2 + 0.5]);
   }
+
+  // Decorative geometry: bookcase columns at left wall
+  _add(_makeBox(0.15, H, 0.42, 0x1a2030, [-3.2, H / 2, -3.0]));
+  _add(_makeBox(0.15, H, 0.42, 0x1a2030, [-1.8, H / 2, -3.0]));
+
+  // Reading lectern cone beside desk
+  _add(_makeCylinder(0.0, 0.25, 0.6, 0x3a2810, [1.5, 0.3, -0.5]));
 
   // Back door to corridor
   _makeDoor([0, 0.9, D / 2 - 0.05], 'stone-corridor', 'Door to Stone Corridor');
@@ -541,14 +813,15 @@ function _buildLibrary() {
 
 function _buildGreatHall() {
   const W = 8, H = 5, D = 10;
-  _makeBoxRoom({ color: COLOURS.greatHall, w: W, h: H, d: D, ambientIntensity: 0.15 });
+  _makeBoxRoom({ color: COLOURS.greatHall, w: W, h: H, d: D, ambientIntensity: 0.1 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Strong fireplace glow at the front/fireplace wall
+  _add(_makePointLight(0xff5800, 2.0, 10, 2, [0, 0.8, D / 2 - 1.0]));
 
-  // Fireplace glow
-  _add(_makePointLight(0xff6010, 1.5, 8, 2, [0, 0.5, D / 2 - 1.5]));
+  // Portrait wall candles — three amber point lights
+  _add(_makePointLight(0xffa040, 0.5, 3, 2, [-3, 2.0, -D / 2 + 0.2]));
+  _add(_makePointLight(0xffa040, 0.5, 3, 2, [0, 2.0, -D / 2 + 0.2]));
+  _add(_makePointLight(0xffa040, 0.5, 3, 2, [3, 2.0, -D / 2 + 0.2]));
 
   // Portrait frames on walls (decorative)
   for (let i = 0; i < 3; i++) {
@@ -564,7 +837,7 @@ function _buildGreatHall() {
 
   // Armoury chest key behind portrait — only visible after solve
   if (portraitSolved && !state.inventory.items.some((i) => i.itemId === 'armoury-chest-key')) {
-    _makeItemBox([0, 0.5, -D / 2 + 0.5], 'item-armoury-chest-key', 'Armoury chest key (hidden behind portrait)');
+    _makeItemArmouryChestKey([0, 0.5, -D / 2 + 0.5]);
   }
 
   // Portrait clue observation point
@@ -576,6 +849,14 @@ function _buildGreatHall() {
     _addInteractable(clueTarget, 'examine-portrait-clue', 'Observe the portrait symbols (chalice, quill, star)', 'examine');
   }
 
+  // Decorative geometry: two large pillars partway down side walls
+  _add(_makeBox(0.5, H, 0.5, 0x4a4035, [-W / 2 + 0.6, H / 2, 0]));
+  _add(_makeBox(0.5, H, 0.5, 0x4a4035, [W / 2 - 0.6, H / 2, 0]));
+
+  // Banner boxes flanking the portrait wall
+  _add(_makeBox(0.4, 2.0, 0.06, 0x6a1a1a, [-2.4, 2.5, -D / 2 + 0.08]));
+  _add(_makeBox(0.4, 2.0, 0.06, 0x6a1a1a, [2.4, 2.5, -D / 2 + 0.08]));
+
   // Back door to corridor
   _makeDoor([0, 0.9, D / 2 - 0.05], 'stone-corridor', 'Door to Stone Corridor');
 }
@@ -584,15 +865,14 @@ function _buildGreatHall() {
 
 function _buildChapel() {
   const W = 6, H = 5, D = 8;
-  _makeBoxRoom({ color: COLOURS.chapel, w: W, h: H, d: D, ambientIntensity: 0.15 });
+  _makeBoxRoom({ color: COLOURS.chapel, w: W, h: H, d: D, ambientIntensity: 0.08, floorColor: 0x25253a });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Stained-glass coloured lights (raised to 1.2)
+  _add(_makePointLight(0x6040ff, 1.2, 8, 2, [-2.0, 3.5, 0]));
+  _add(_makePointLight(0xff4060, 1.2, 6, 2, [2.0, 3.5, 0]));
 
-  // Coloured light through windows
-  _add(_makePointLight(0x6040ff, 0.8, 8, 2, [-2.0, 3.5, 0]));
-  _add(_makePointLight(0xff4060, 0.6, 6, 2, [2.0, 3.5, 0]));
+  // Cold white skylight from above
+  _add(_makePointLight(0xe8f0ff, 0.8, 8, 2, [0, 4.5, 0]));
 
   // Altar (puzzle target)
   const state = getState();
@@ -609,8 +889,12 @@ function _buildChapel() {
 
   // Chapel sigil in altar drawer — visible after solve
   if (altarSolved && !state.inventory.items.some((i) => i.itemId === 'chapel-sigil')) {
-    _makeItemBox([0, 0.8, -D / 2 + 1.5], 'item-chapel-sigil', 'Chapel sigil (take from altar drawer)');
+    _makeItemChapelSigil([0, 0.8, -D / 2 + 1.5]);
   }
+
+  // Decorative geometry: tapered columns flanking the altar
+  _add(_makeCylinder(0.12, 0.18, H * 0.8, 0x2a2a40, [-1.2, H * 0.4, -D / 2 + 1.8]));
+  _add(_makeCylinder(0.12, 0.18, H * 0.8, 0x2a2a40, [1.2, H * 0.4, -D / 2 + 1.8]));
 
   // Back door to corridor
   _makeDoor([0, 0.9, D / 2 - 0.05], 'stone-corridor', 'Door to Stone Corridor');
@@ -620,19 +904,25 @@ function _buildChapel() {
 
 function _buildArmoury() {
   const W = 6, H = 3.5, D = 7;
-  _makeBoxRoom({ color: COLOURS.armoury, w: W, h: H, d: D, ambientIntensity: 0.2 });
+  _makeBoxRoom({ color: COLOURS.armoury, w: W, h: H, d: D, ambientIntensity: 0.15 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Cold blue-white overhead for the stone armoury
+  _add(_makePointLight(0xd0e0ff, 1.0, 10, 2, [0, 3.0, 0]));
 
-  // Torch
-  _add(_makePointLight(TOKEN_ACCENT_AMBER, 1.0, 6, 2, [0, 2.5, 0]));
+  // Single amber corner torch
+  _add(_makePointLight(0xffa040, 0.8, 5, 2, [2.5, 2.2, -D / 2 + 0.5]));
 
-  // Weapon racks (decorative)
+  // Weapon racks (decorative) — framed with uprights and horizontal bars
   for (let i = 0; i < 3; i++) {
-    const rack = _makeBox(0.1, 1.5, 0.05, 0x808080, [-2.5 + i * 2.5, 2.2, -D / 2 + 0.05], { roughness: 0.3, metalness: 0.7 });
-    _add(rack);
+    const x = -2.5 + i * 2.5;
+    // Left upright
+    _add(_makeBox(0.06, 1.4, 0.06, 0x707070, [x - 0.25, 1.5, -D / 2 + 0.08], { roughness: 0.3, metalness: 0.6 }));
+    // Right upright
+    _add(_makeBox(0.06, 1.4, 0.06, 0x707070, [x + 0.25, 1.5, -D / 2 + 0.08], { roughness: 0.3, metalness: 0.6 }));
+    // Top bar
+    _add(_makeBox(0.6, 0.06, 0.06, 0x808080, [x, 2.18, -D / 2 + 0.08], { roughness: 0.3, metalness: 0.6 }));
+    // Bottom bar
+    _add(_makeBox(0.6, 0.06, 0.06, 0x808080, [x, 0.82, -D / 2 + 0.08], { roughness: 0.3, metalness: 0.6 }));
   }
 
   // Chest (puzzle target)
@@ -643,7 +933,7 @@ function _buildArmoury() {
 
   // Iron gate key inside chest — visible after solve
   if (chestSolved && !state.inventory.items.some((i) => i.itemId === 'iron-gate-key')) {
-    _makeItemBox([1.5, 0.85, D / 2 - 1.5], 'item-iron-gate-key', 'Iron gate key (take from chest)');
+    _makeItemIronGateKey([1.5, 0.85, D / 2 - 1.5]);
   }
 
   // Back door to corridor
@@ -654,14 +944,15 @@ function _buildArmoury() {
 
 function _buildTowerRoom() {
   const W = 5, H = 5, D = 5;
-  _makeBoxRoom({ color: COLOURS.towerRoom, w: W, h: H, d: D, ambientIntensity: 0.1 });
+  _makeBoxRoom({ color: COLOURS.towerRoom, w: W, h: H, d: D, ambientIntensity: 0.08, floorColor: 0x1e2430 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Moonlight as a directional light from above-left
+  const moonlight = new THREE.DirectionalLight(0xc0d8ff, 1.5);
+  moonlight.position.set(0.5, 1, -0.5);
+  _add(moonlight);
 
-  // Moonlight from windows
-  _add(_makePointLight(0xc0d8ff, 1.2, 8, 2, [0, 3.5, 0]));
+  // Telescope accent point
+  _add(_makePointLight(0xffc040, 0.6, 3, 2, [0.5, 1.8, -0.5]));
 
   // Telescope (puzzle target)
   const state = getState();
@@ -679,8 +970,14 @@ function _buildTowerRoom() {
 
   // Star chart panel — revealed after solve
   if (telescopeSolved && !state.inventory.items.some((i) => i.itemId === 'brass-star-chart')) {
-    _makeItemBox([0.5, 1.85, -0.5], 'item-brass-star-chart', 'Brass star chart (take from opened panel)');
+    _makeItemBrassStarChart([0.5, 1.85, -0.5]);
   }
+
+  // Decorative geometry: window sill blocks suggesting a window opening
+  _add(_makeBox(1.2, 0.12, 0.2, 0x445060, [-0.6, 2.0, -D / 2 + 0.1]));
+  _add(_makeBox(1.2, 0.12, 0.2, 0x445060, [0.6, 2.0, -D / 2 + 0.1]));
+  // Cross-bar between sill blocks
+  _add(_makeBox(0.12, 0.8, 0.15, 0x445060, [0, 1.6, -D / 2 + 0.1]));
 
   // Back door to corridor
   _makeDoor([0, 0.9, D / 2 - 0.05], 'stone-corridor', 'Door to Stone Corridor');
@@ -690,14 +987,13 @@ function _buildTowerRoom() {
 
 function _buildWitchsStudy() {
   const W = 5, H = 4, D = 7;
-  _makeBoxRoom({ color: COLOURS.witchsStudy, w: W, h: H, d: D, ambientIntensity: 0.1 });
+  _makeBoxRoom({ color: COLOURS.witchsStudy, w: W, h: H, d: D, ambientIntensity: 0.08 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
+  // Purple magic glow (raised to 1.2)
+  _add(_makePointLight(TOKEN_ACCENT_PURPLE, 1.2, 6, 2, [0, 2.0, -1.0]));
 
-  // Purple magic glow
-  _add(_makePointLight(TOKEN_ACCENT_PURPLE, 0.8, 6, 2, [0, 2.0, -1.0]));
+  // Candle on desk — dim amber
+  _add(_makePointLight(0xffa040, 0.4, 3, 2, [0.5, 1.2, 0.5]));
 
   // Lectern (place torn page)
   const lectern = _makeBox(0.6, 1.2, 0.4, 0x300820, [0, 0.6, -1.5], { roughness: 0.8 });
@@ -720,11 +1016,13 @@ function _buildWitchsStudy() {
 
   // Charged binding crystal — visible after solve
   if (spellSolved && !state.inventory.items.some((i) => i.itemId === 'charged-binding-crystal')) {
-    const crystal = _makeItemBox([0.5, 1.2, 0.5], 'item-charged-binding-crystal', 'Charged binding crystal');
-    crystal.material.color.setHex(TOKEN_ACCENT_PURPLE);
-    crystal.material.emissive.setHex(TOKEN_ACCENT_PURPLE);
-    crystal.material.emissiveIntensity = 0.7;
+    _makeItemChargedBindingCrystal([0.5, 1.2, 0.5]);
   }
+
+  // Decorative geometry: suspended spell bundles from ceiling
+  _add(_makeBox(0.2, 0.4, 0.2, 0x1a0820, [-0.8, H - 0.3, -1.0]));
+  _add(_makeBox(0.2, 0.4, 0.2, 0x1a0820, [0.4, H - 0.5, -1.2]));
+  _add(_makeBox(0.2, 0.4, 0.2, 0x1a0820, [-0.2, H - 0.2, -0.5]));
 
   // Back door to corridor
   _makeDoor([0, 0.9, D / 2 - 0.05], 'stone-corridor', 'Door to Stone Corridor');
@@ -736,12 +1034,8 @@ function _buildCastleGate() {
   const W = 6, H = 5, D = 5;
   _makeBoxRoom({ color: COLOURS.castleGate, w: W, h: H, d: D, ambientIntensity: 0.3 });
 
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
-
-  // Daylight glow from the gate
-  _add(_makePointLight(0xfff8e0, 2.0, 10, 2, [0, 2.5, -D / 2 + 0.5]));
+  // Strong daylight glow from the gate (brighter, wider reach)
+  _add(_makePointLight(0xfff8e0, 3.5, 16, 2, [0, 2.5, -D / 2 + 0.5]));
 
   // Gate (visual — decorative bars)
   for (let i = -2; i <= 2; i++) {
@@ -772,6 +1066,10 @@ function _buildCastleGate() {
     _add(openGlow);
   }
 
+  // Decorative geometry: large stone gate-pillar boxes flanking the bars
+  _add(_makeBox(0.5, H, 0.5, 0x5a5040, [-2.2, H / 2, -D / 2 + 0.3]));
+  _add(_makeBox(0.5, H, 0.5, 0x5a5040, [2.2, H / 2, -D / 2 + 0.3]));
+
   // Back door to corridor
   _makeDoor([0, 0.9, D / 2 - 0.05], 'stone-corridor', 'Door to Stone Corridor');
 }
@@ -780,11 +1078,7 @@ function _buildCastleGate() {
 
 function _buildGenericRoom(_roomId) {
   _makeBoxRoom({ color: 0x2a2a2a, w: 5, h: 3.5, d: 6, ambientIntensity: 0.3 });
-
-  // Warm ceiling point light for depth and visibility
-  const light = _makePointLight(0xffc070, 1.5, 12, 2, [0, 2.8, 0]);
-  _add(light);
-
+  _add(_makePointLight(0xffc070, 1.0, 10, 2, [0, 2.8, 0]));
   _makeDoor([0, 0.9, 2.95], 'stone-corridor', 'Door to Stone Corridor');
 }
 
