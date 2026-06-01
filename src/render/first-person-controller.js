@@ -108,6 +108,22 @@ export function updateFirstPersonController(deltaMs) {
     _camera.position.z = Math.max(-ROOM_HALF_D, Math.min(ROOM_HALF_D, newZ));
   }
 
+  // Strafe — perpendicular to the camera's facing direction.
+  let moveX = 0;
+  if (held.has('MOVE_LEFT'))  moveX -= 1;
+  if (held.has('MOVE_RIGHT')) moveX += 1;
+
+  if (moveX !== 0) {
+    const speed = MOVE_SPEED * deltaSec;
+    // The camera's world-space right vector is (cos(yaw), 0, -sin(yaw)).
+    const newX = _camera.position.x + Math.cos(_yaw) * moveX * speed;
+    const newZ = _camera.position.z - Math.sin(_yaw) * moveX * speed;
+    const ROOM_HALF_W = 2.3;
+    const ROOM_HALF_D = 2.7;
+    _camera.position.x = Math.max(-ROOM_HALF_W, Math.min(ROOM_HALF_W, newX));
+    _camera.position.z = Math.max(-ROOM_HALF_D, Math.min(ROOM_HALF_D, newZ));
+  }
+
   // Apply current yaw/pitch to camera.
   _camera.rotation.y = _yaw;
   _camera.rotation.x = _pitch;
