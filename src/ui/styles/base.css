@@ -35,6 +35,24 @@
   border: 0;
 }
 
+/* Skip link — visible on keyboard focus only (WCAG 2.4.1 Bypass Blocks). */
+.skip-link {
+  position: absolute;
+  top: -48px;
+  left: 0;
+  padding: 10px 18px;
+  background: var(--fg-primary, #f0eae0);
+  color: var(--bg-canvas, #0a0a0a);
+  font: 700 14px/1.4 system-ui, sans-serif;
+  text-decoration: none;
+  border-radius: 0 0 6px 0;
+  z-index: 10000;
+  transition: top 0.1s ease;
+}
+.skip-link:focus {
+  top: 0;
+}
+
 html,
 body {
   height: 100%;
