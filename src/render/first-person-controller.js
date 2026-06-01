@@ -4,10 +4,9 @@
  * Consumes MOVE_* and LOOK_* intents from the intent bus.
  * Updates the Three.js camera position and rotation each frame.
  *
- * Look range constraints (FR-NAV-02, Tad CALL):
- *   Horizontal: ±80° (160° total)
- *   Vertical: ±45° (90° total)
- * These match the vestibular check the team established for ICCC.
+ * Look range constraints (FR-NAV-02):
+ *   Horizontal: unlimited — full 360° rotation allowed.
+ *   Vertical: ±45° (90° total) — prevents the camera from flipping upside-down.
  *
  * Reduced-motion: when prefers-reduced-motion is set, look acceleration
  * is removed (linear movement, no easing).
@@ -30,7 +29,6 @@ const KEYBOARD_LOOK_SPEED_DEG = 90; // degrees per second for keyboard look
 const MOVE_SPEED = 3.0; // metres per second
 
 // Clamp range in radians.
-const MAX_HORIZONTAL_RAD = (80 * Math.PI) / 180; // ±80°
 const MAX_VERTICAL_RAD = (45 * Math.PI) / 180; // ±45°
 
 // Euler rotation stored as yaw (horizontal) and pitch (vertical).
@@ -126,9 +124,6 @@ export function updateFirstPersonController(deltaMs) {
 function _applyLookDelta(dx, dy) {
   _yaw -= (dx * Math.PI) / 180;
   _pitch -= (dy * Math.PI) / 180;
-
-  // Clamp horizontal yaw to ±80° (160° total, FR-NAV-02).
-  _yaw = Math.max(-MAX_HORIZONTAL_RAD, Math.min(MAX_HORIZONTAL_RAD, _yaw));
 
   // Clamp vertical pitch to ±45° (90° total, FR-NAV-02).
   _pitch = Math.max(-MAX_VERTICAL_RAD, Math.min(MAX_VERTICAL_RAD, _pitch));
