@@ -16,7 +16,7 @@
  * once the full build pipeline (ADR 009) is wired.
  */
 
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 const CORE_CACHE = `core-cache-v${VERSION}`;
 const ROOM_CACHE = `room-cache-v${VERSION}`;
 const RUNTIME_CACHE = `runtime-cache-v${VERSION}`;
