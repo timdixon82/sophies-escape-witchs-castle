@@ -655,9 +655,20 @@ function _buildDungeonCell() {
     _add(_makeBox(0.04, 0.5, 0.05, 0x303030, [W / 2 - 0.05, 1.8 + i * 0.15, -1.0]));
   }
 
-  // Cell door (back wall) — only interactable if dungeon-cell puzzle solved
-  const door = _makeBox(0.9, 1.8, 0.1, 0x1e1a14, [0, 0.9, -D / 2 + 0.05], { roughness: 1.0 });
-  _addInteractable(door, 'room1-door', 'Heavy wooden door (use bent spoon to open)', 'puzzle');
+  // Cell door (back wall) — puzzle type until solved, then a navigable door.
+  const cellSolved = state.puzzles['cell-escape']?.state === 'solved';
+  const cellDoor = _makeBox(
+    0.9, 1.8, 0.1,
+    cellSolved ? 0x2a1e12 : 0x1e1a14,
+    [0, 0.9, -D / 2 + 0.05],
+    { roughness: 1.0 }
+  );
+  _addInteractable(
+    cellDoor,
+    cellSolved ? 'door-stone-corridor' : 'room1-door',
+    cellSolved ? 'Door to Stone Corridor' : 'Heavy wooden door (use bent spoon to open)',
+    cellSolved ? 'door' : 'puzzle'
+  );
 }
 
 // ─── Room 2: Stone Corridor ──────────────────────────────────────────────────

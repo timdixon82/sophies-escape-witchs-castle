@@ -35,6 +35,7 @@
     <link rel="stylesheet" href="/src/ui/styles/overlays.css" />
   </head>
   <body>
+    <a href="#game-main-focus" class="skip-link">Skip to main content</a>
     <!-- Loading screen — visible until the game initialises. -->
     <div
       id="loading-screen"
@@ -58,6 +59,12 @@
 
     <!-- Main content area (S-09: page must have a <main> landmark). -->
     <main id="game-main">
+      <!-- Skip-link focus receiver. display:contents on #game-main prevents the
+           element itself from being focusable, so the skip link targets this
+           hidden span instead. tabindex="-1" on a span works correctly because
+           a span generates a normal layout box. aria-hidden keeps it out of
+           the accessibility tree — it is a structural device, not content. -->
+      <span id="game-main-focus" tabindex="-1" style="position:absolute;width:0;height:0;overflow:hidden;" aria-hidden="true"></span>
 
     <!-- 3D canvas — the Three.js renderer writes into this element.
          role="application" + aria-label let screen readers know this is an
