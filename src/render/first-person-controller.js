@@ -23,7 +23,7 @@
 import { on } from './input/intent-bus.js';
 import { getHeldIntents } from './input/keyboard-bridge.js';
 import { getJoystickHeld } from './input/touch-bridge.js';
-import { getCurrentRoomId } from '../room-manager.js';
+import { getCurrentRoomId } from './room-manager.js';
 
 // Look sensitivity constants (degrees).
 const KEYBOARD_LOOK_SPEED_DEG = 90; // degrees per second for keyboard look
