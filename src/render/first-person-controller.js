@@ -23,6 +23,7 @@
 import { on } from './input/intent-bus.js';
 import { getHeldIntents } from './input/keyboard-bridge.js';
 import { getJoystickHeld } from './input/touch-bridge.js';
+import { getCurrentRoomId } from '../room-manager.js';
 
 // Look sensitivity constants (degrees).
 const KEYBOARD_LOOK_SPEED_DEG = 90; // degrees per second for keyboard look
@@ -30,6 +31,21 @@ const MOVE_SPEED = 3.0; // metres per second
 
 // Clamp range in radians.
 const MAX_VERTICAL_RAD = (45 * Math.PI) / 180; // ±45°
+
+/** Half-dimensions per room in metres, leaving a 0.3m body buffer from walls. */
+const ROOM_BOUNDS = {
+  'dungeon-cell':   { hw: 2.2, hd: 2.7 },
+  'stone-corridor': { hw: 1.7, hd: 6.7 },
+  kitchen:          { hw: 2.2, hd: 2.7 },
+  library:          { hw: 2.7, hd: 3.2 },
+  'great-hall':     { hw: 3.7, hd: 4.7 },
+  chapel:           { hw: 2.7, hd: 3.7 },
+  armoury:          { hw: 2.7, hd: 3.2 },
+  'tower-room':     { hw: 2.2, hd: 2.2 },
+  'witchs-study':   { hw: 2.2, hd: 3.2 },
+  'castle-gate':    { hw: 2.7, hd: 2.2 },
+};
+const DEFAULT_BOUNDS = { hw: 2.2, hd: 2.7 };
 
 // Euler rotation stored as yaw (horizontal) and pitch (vertical).
 // Applied to camera.rotation (order = 'YXZ' set in engine.js).
@@ -101,11 +117,10 @@ export function updateFirstPersonController(deltaMs) {
     const newX = _camera.position.x + sinYaw * moveZ * speed;
     const newZ = _camera.position.z + cosYaw * moveZ * speed;
 
-    // Simple room boundary clamp (placeholder; full raycast in v0.2).
-    const ROOM_HALF_W = 2.3;
-    const ROOM_HALF_D = 2.7;
-    _camera.position.x = Math.max(-ROOM_HALF_W, Math.min(ROOM_HALF_W, newX));
-    _camera.position.z = Math.max(-ROOM_HALF_D, Math.min(ROOM_HALF_D, newZ));
+    // Per-room boundary clamp (placeholder; full raycast in v0.2).
+    const bounds = _getRoomBounds();
+    _camera.position.x = Math.max(-bounds.hw, Math.min(bounds.hw, newX));
+    _camera.position.z = Math.max(-bounds.hd, Math.min(bounds.hd, newZ));
   }
 
   // Strafe — perpendicular to the camera's facing direction.
@@ -118,10 +133,9 @@ export function updateFirstPersonController(deltaMs) {
     // The camera's world-space right vector is (cos(yaw), 0, -sin(yaw)).
     const newX = _camera.position.x + Math.cos(_yaw) * moveX * speed;
     const newZ = _camera.position.z - Math.sin(_yaw) * moveX * speed;
-    const ROOM_HALF_W = 2.3;
-    const ROOM_HALF_D = 2.7;
-    _camera.position.x = Math.max(-ROOM_HALF_W, Math.min(ROOM_HALF_W, newX));
-    _camera.position.z = Math.max(-ROOM_HALF_D, Math.min(ROOM_HALF_D, newZ));
+    const bounds = _getRoomBounds();
+    _camera.position.x = Math.max(-bounds.hw, Math.min(bounds.hw, newX));
+    _camera.position.z = Math.max(-bounds.hd, Math.min(bounds.hd, newZ));
   }
 
   // Apply current yaw/pitch to camera.
@@ -130,6 +144,15 @@ export function updateFirstPersonController(deltaMs) {
 }
 
 // ─── Private ─────────────────────────────────────────────────────────────────
+
+/**
+ * Returns the movement half-dimensions for the current room.
+ * Falls back to DEFAULT_BOUNDS when the room ID is unknown.
+ * @returns {{ hw: number, hd: number }}
+ */
+function _getRoomBounds() {
+  return ROOM_BOUNDS[getCurrentRoomId() ?? ''] ?? DEFAULT_BOUNDS;
+}
 
 /**
  * Applies a look delta (in degrees) to yaw/pitch with clamping.
