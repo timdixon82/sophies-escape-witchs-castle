@@ -125,6 +125,43 @@ export function enterRoom(roomId) {
 }
 
 /**
+ * Removes a single item mesh from the scene by its itemId.
+ * Called by the interaction handler immediately after PICK_UP_ITEM dispatch.
+ * More surgical than rebuildCurrentRoom() — only the specific mesh is removed,
+ * so the keyboard nav list never briefly contains a stale entry.
+ * @param {string} itemId — the item ID without the 'item-' prefix, e.g. 'bent-spoon'
+ */
+export function removeItemMesh(itemId) {
+  const targetId = `item-${itemId}`;
+  const idx = _interactables.findIndex((m) => m.userData.id === targetId);
+  if (idx === -1) return;
+
+  const mesh = _interactables[idx];
+
+  // Remove the floating DOM label if present.
+  if (mesh.userData.labelEl) {
+    mesh.userData.labelEl.remove();
+    mesh.userData.labelEl = null;
+  }
+
+  // Remove from the Three.js scene and dispose GPU resources.
+  if (_scene) _scene.remove(mesh);
+  if (mesh.geometry) mesh.geometry.dispose();
+  if (mesh.material) {
+    if (Array.isArray(mesh.material)) {
+      for (const m of mesh.material) m.dispose();
+    } else {
+      mesh.material.dispose();
+    }
+  }
+
+  // Remove from both tracking arrays.
+  _interactables.splice(idx, 1);
+  const roomIdx = _roomObjects.indexOf(mesh);
+  if (roomIdx !== -1) _roomObjects.splice(roomIdx, 1);
+}
+
+/**
  * Rebuilds the current room in-place.
  * Called when a puzzle is solved and the room geometry needs to update
  * (e.g. to reveal a newly accessible item or change object colour).

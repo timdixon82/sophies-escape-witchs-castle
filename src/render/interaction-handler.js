@@ -29,7 +29,7 @@ import * as THREE from 'three';
 import { on } from './input/intent-bus.js';
 import { dispatch, getState } from '../core/state.js';
 import { getCamera } from './engine.js';
-import { getInteractables, enterRoom, rebuildCurrentRoom } from './room-manager.js';
+import { getInteractables, enterRoom, removeItemMesh } from './room-manager.js';
 import { PUZZLE_DEFINITIONS, ITEMS } from '../assets/room-data.js';
 
 /** @type {THREE.Raycaster} */
@@ -251,7 +251,7 @@ function _handleItemPickup(objectId, announce) {
   }
 
   dispatch({ type: 'PICK_UP_ITEM', payload: { itemId } });
-  rebuildCurrentRoom();
+  removeItemMesh(itemId);
   refreshInteractionList(announce);
 
   const label = ITEMS[itemId]?.label ?? itemId;
