@@ -83,6 +83,12 @@ if [ -f "$tv_file" ]; then
   if [ ! -d "$master" ]; then
     echo "master path invalid, skipping sync check."
   else
+    # Guard: when this session IS the master, self-sync is meaningless.
+    _proj_real=$(realpath "$proj" 2>/dev/null || printf '%s' "$proj")
+    _master_real=$(realpath "$master" 2>/dev/null || printf '%s' "$master")
+    if [ "$_proj_real" = "$_master_real" ]; then
+      : # This session is the master itself — sync check not applicable.
+    else
     proj_v="$(cat "$tv_file" 2>/dev/null || echo unknown)"
     master_v="$(cat "$master/VERSION" 2>/dev/null || true)"
 
@@ -96,7 +102,6 @@ if [ -f "$tv_file" ]; then
     else
       echo "Template: in sync ($proj_v)."
     fi
-
     # ── sha256 parity check: detect silent local modification of the gate ───
     sha_file="$proj/.claude/template-hook-sha256"
     if [ -f "$sha_file" ]; then
@@ -128,7 +133,7 @@ if [ -f "$tv_file" ]; then
     if [ -f "$_pending_prefix_file" ]; then
       _pending_prefix="$(tr -d '[:space:]' < "$_pending_prefix_file" 2>/dev/null || true)"
       # Validate: must be 2-4 uppercase letters only (path-traversal guard).
-      if [ -n "$_pending_prefix" ] && printf '%s' "$_pending_prefix" | grep -qE '^[A-Z]{2,4}$'; then
+      if [ -n "$_pending_prefix" ] && printf '%s' "$_pending_prefix" | grep -qE '^[A-Z][A-Z0-9]{1,5}$'; then
         _pending_file="$master/outputs/project-pending/${_pending_prefix}.md"
         if [ -f "$_pending_file" ]; then
           # Count open entries. grep -c exits 1 with no matches — handle that.
@@ -155,6 +160,7 @@ if [ -f "$tv_file" ]; then
       fi
     fi
     # ── End pending tasks check ──────────────────────────────────────────────
+    fi # end self-guard (ADR-sync-self): sha256 and pending tasks skipped at master
   fi
 
 fi
