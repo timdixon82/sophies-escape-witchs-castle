@@ -234,7 +234,7 @@ agent_text=$(printf '%s' "$input" \
   | jq -r '.text // .response // .reason // ""' 2>/dev/null)
 
 # ---- 4a: route <!-- TASK project: PREFIX --> blocks ----------------------
-if [ -n "${agent_text}" ] && printf '%s' "${agent_text}" | grep -qE '<!-- TASK project: [A-Z]{2,4} -->'; then
+if [ -n "${agent_text}" ] && printf '%s' "${agent_text}" | grep -qE '<!-- TASK project: [A-Z][A-Z0-9]{1,5} -->'; then
   pending_helper="${CLAUDE_PROJECT_DIR}/scripts/project-pending.sh"
   lint_file="${CLAUDE_PROJECT_DIR}/lint.md"
 
@@ -243,7 +243,7 @@ if [ -n "${agent_text}" ] && printf '%s' "${agent_text}" | grep -qE '<!-- TASK p
   # Uses BSD awk-compatible syntax (no gawk array capture in match()).
   printf '%s' "${agent_text}" | awk '
     BEGIN { in_block = 0; prefix = "" }
-    /<!-- TASK project: [A-Z]{2,4} -->/ {
+    /<!-- TASK project: [A-Z][A-Z0-9]{1,5} -->/ {
       in_block = 1
       # Extract prefix using sub (BSD awk compatible).
       tmp = $0
