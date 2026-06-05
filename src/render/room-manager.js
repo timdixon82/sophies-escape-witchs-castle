@@ -281,6 +281,17 @@ function _tearDownRoom() {
       }
     }
   }
+
+  // Some interactable meshes (e.g. the bent-spoon handle) hold a labelEl but
+  // are not themselves entries in _roomObjects — their parent Group is. Walk
+  // _interactables to catch any labelEl not already removed above.
+  for (const mesh of _interactables) {
+    if (mesh.userData && mesh.userData.labelEl) {
+      mesh.userData.labelEl.remove();
+      mesh.userData.labelEl = null;
+    }
+  }
+
   _roomObjects = [];
   _interactables = [];
   _propMeshes = [];

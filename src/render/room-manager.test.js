@@ -160,6 +160,7 @@ import {
   enterRoom,
   getInteractables,
   removeItemMesh,
+  rebuildCurrentRoom,
 } from './room-manager.js';
 
 // ─── Minimal DOM stubs ────────────────────────────────────────────────────────
@@ -250,5 +251,51 @@ describe('removeItemMesh', () => {
     removeItemMesh('moonflower-petal');
 
     expect(getInteractables()).toHaveLength(countBefore);
+  });
+});
+
+// ─── rebuildCurrentRoom label teardown regression ─────────────────────────────
+//
+// Regression: _tearDownRoom() only iterated _roomObjects when removing label
+// elements. Item meshes whose labelEl is registered only in _interactables (such
+// as the bent spoon handle) were skipped, orphaning one div.item-label per call.
+//
+
+describe('rebuildCurrentRoom', () => {
+  beforeEach(() => {
+    _installDomStubs();
+    initRoomManager(new THREE.Scene());
+    enterRoom('kitchen');
+    enterRoom('dungeon-cell');
+  });
+
+  it('removes label DOM elements attached to interactable meshes during teardown', () => {
+    // Find the bent-spoon handle, which holds userData.labelEl but whose Group
+    // (not the handle itself) is registered in _roomObjects. This is the exact
+    // path that was orphaning labels before the fix.
+    const spoonMesh = getInteractables().find((m) => m.userData.id === 'item-bent-spoon');
+    expect(spoonMesh).toBeDefined();
+
+    // Attach a fresh label stub so we can assert it is cleaned up.
+    const fakeLabelEl = _makeLabelEl();
+    spoonMesh.userData.labelEl = fakeLabelEl;
+
+    // rebuildCurrentRoom() calls _tearDownRoom() then rebuilds. The orphan
+    // would survive teardown before the fix; it must be cleaned up after.
+    rebuildCurrentRoom();
+
+    expect(fakeLabelEl.remove).toHaveBeenCalledOnce();
+  });
+
+  it('does not leave stale labelEl references on interactable meshes after teardown', () => {
+    const spoonMesh = getInteractables().find((m) => m.userData.id === 'item-bent-spoon');
+    const fakeLabelEl = _makeLabelEl();
+    spoonMesh.userData.labelEl = fakeLabelEl;
+
+    rebuildCurrentRoom();
+
+    // The reference is nulled so a subsequent tick of the render loop cannot
+    // attempt to reposition a label that is no longer in the DOM.
+    expect(spoonMesh.userData.labelEl).toBeNull();
   });
 });
