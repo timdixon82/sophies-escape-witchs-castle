@@ -106,6 +106,25 @@ describe('resetCameraToRoomEntry', () => {
     disposeFirstPersonController(); // clears _camera
     expect(() => resetCameraToRoomEntry()).not.toThrow();
   });
+
+  it('accepts a custom spawn position and applies it to the camera', () => {
+    resetCameraToRoomEntry([1.0, 1.7, -3.0]);
+    expect(camera.position.set).toHaveBeenLastCalledWith(1.0, 1.7, -3.0);
+  });
+
+  it('accepts a custom facingAngleY and applies it as camera yaw', () => {
+    resetCameraToRoomEntry([0, 1.7, 0], Math.PI / 2);
+    // updateFirstPersonController with deltaMs=0 flushes yaw → camera.rotation.y
+    updateFirstPersonController(0);
+    expect(camera.rotation.y).toBe(Math.PI / 2);
+  });
+
+  it('default call still spawns at room centre facing −Z', () => {
+    resetCameraToRoomEntry();
+    updateFirstPersonController(0);
+    expect(camera.position.set).toHaveBeenLastCalledWith(0, 1.7, 0);
+    expect(camera.rotation.y).toBe(0);
+  });
 });
 
 describe('setCollidableMeshes', () => {

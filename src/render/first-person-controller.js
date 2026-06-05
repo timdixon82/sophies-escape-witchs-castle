@@ -122,19 +122,25 @@ export function setCollidableMeshes(meshes) {
 }
 
 /**
- * Resets the player's position and look direction to the room entry defaults.
- * Call from room-manager.js immediately after a room transition so the player
- * always spawns at room centre facing forward (−Z), regardless of where they
- * were standing in the previous room.
+ * Resets the player's position and look direction to the room entry position.
+ * Call from room-manager.js immediately after a room transition.
+ *
+ * When `spawnPos` and `facingAngleY` are provided the player spawns near the
+ * entry door facing into the new room (Fix 2). When called with no arguments
+ * (new game, or rooms with no detectable entry door) the player spawns at
+ * room centre facing −Z, matching the previous behaviour.
  *
  * Without this reset, the camera position persists across transitions and the
  * player may respawn directly in front of the dungeon-cell door, causing the
  * "two doors both lead to dungeon" symptom Tim reported (Issue 5).
+ *
+ * @param {[number, number, number]} spawnPos  World position [x, y, z] for the camera.
+ * @param {number}                   facingAngleY  Yaw angle in radians (0 = facing −Z).
  */
-export function resetCameraToRoomEntry() {
+export function resetCameraToRoomEntry(spawnPos = [0, 1.7, 0], facingAngleY = 0) {
   if (!_camera) return;
-  _camera.position.set(0, 1.7, 0);
-  _yaw = 0;
+  _camera.position.set(...spawnPos);
+  _yaw = facingAngleY;
   _pitch = 0;
 }
 

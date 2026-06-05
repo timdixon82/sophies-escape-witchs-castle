@@ -47,7 +47,7 @@ vi.mock('three', () => {
   class Group {
     constructor() {
       this.position = { set: vi.fn() };
-      this.rotation = { z: 0 };
+      this.rotation = { x: 0, y: 0, z: 0 };
       this.userData = {};
     }
     add() {}
