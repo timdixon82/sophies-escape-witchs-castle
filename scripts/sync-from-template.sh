@@ -253,6 +253,7 @@ SCRIPTS_MANIFEST=(
   "scripts/next-q.sh"
   "scripts/sync-from-template.sh"
   "scripts/record-backport.sh"
+  "scripts/tasks.sh"
 )
 
 changed=0
@@ -360,30 +361,53 @@ for item in "${ROOT_MANIFEST[@]}"; do
 done
 
 if type_gets_workflows "$_project_type"; then
-  for item in "${GITHUB_TEMPLATES_MANIFEST[@]}"; do
-    src="$template/templates/.github/$item"
-    dst="$project_root/.github/$item"
+  # Load the optional protect list from .claude/workflows-protect.
+  # Format: one filename (basename) per line; lines starting with # are comments.
+  # Any filename listed here is skipped during sync — the project's copy is kept.
+  # The file is never itself synced, so project-specific entries are permanent.
+  _protect_file="$project_root/.claude/workflows-protect"
+  _protect_list=""
+  if [ -f "$_protect_file" ]; then
+    _protect_list="$(grep -v '^[[:space:]]*#' "$_protect_file" \
+      | grep -v '^[[:space:]]*$' \
+      | tr -d '\r' \
+      || true)"
+  fi
 
-    if [ ! -e "$src" ]; then
-      echo "  WARNING: $src not found in master templates; skipping"
+  for item in "${GITHUB_TEMPLATES_MANIFEST[@]}"; do
+    src_dir="$template/templates/.github/$item"
+    dst_dir="$project_root/.github/$item"
+
+    if [ ! -e "$src_dir" ]; then
+      echo "  WARNING: $src_dir not found in master templates; skipping"
       continue
     fi
 
-    if [ -e "$dst" ]; then
-      if [ -d "$dst" ] && diff -rq "$src" "$dst" >/dev/null 2>&1; then
-        echo "  unchanged: .github/$item"
-        continue
-      elif [ -f "$dst" ] && cmp -s "$src" "$dst"; then
-        echo "  unchanged: .github/$item"
+    mkdir -p "$dst_dir"
+
+    # File-by-file sync: template files are added/updated in the project.
+    # Files in the project that are not in the template are preserved.
+    # Files listed in .claude/workflows-protect are never overwritten.
+    for src_file in "$src_dir"/*; do
+      [ -f "$src_file" ] || continue
+      fname="$(basename "$src_file")"
+      dst_file="$dst_dir/$fname"
+
+      # Check protect list (skip if filename matches any entry).
+      if [ -n "$_protect_list" ] && printf '%s\n' "$_protect_list" | grep -qxF "$fname" 2>/dev/null; then
+        echo "  protected: .github/$item/$fname"
         continue
       fi
-    fi
 
-    mkdir -p "$project_root/.github"
-    rm -rf "$dst"
-    cp -R "$src" "$dst"
-    echo "  synced:    .github/$item"
-    changed=$((changed + 1))
+      if [ -f "$dst_file" ] && cmp -s "$src_file" "$dst_file"; then
+        echo "  unchanged: .github/$item/$fname"
+        continue
+      fi
+
+      cp "$src_file" "$dst_file"
+      echo "  synced:    .github/$item/$fname"
+      changed=$((changed + 1))
+    done
   done
 else
   echo "  skipped:   .github/workflows/ (project type '$_project_type' does not use build workflows)"
