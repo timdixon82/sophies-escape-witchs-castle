@@ -39,8 +39,18 @@ vi.mock('three', () => {
       this.material = material ?? makeMaterial();
       this.userData = {};
       this.position = { set: vi.fn(), clone: vi.fn(() => ({ project: vi.fn() })) };
-      this.rotation = { set: vi.fn(), z: 0 };
+      this.rotation = { set: vi.fn(), z: 0, x: 0 };
+      this.scale = { set: vi.fn() };
     }
+  }
+
+  class Group {
+    constructor() {
+      this.position = { set: vi.fn() };
+      this.rotation = { z: 0 };
+      this.userData = {};
+    }
+    add() {}
   }
 
   class Vector2 { constructor() {} }
@@ -50,18 +60,59 @@ vi.mock('three', () => {
   class CylinderGeometry { constructor() { return makeGeometry(); } }
   class SphereGeometry { constructor() { return makeGeometry(); } }
   class TorusGeometry { constructor() { return makeGeometry(); } }
+  class LatheGeometry { constructor() { return makeGeometry(); } }
   class MeshStandardMaterial { constructor() { return makeMaterial(); } }
   class AmbientLight { constructor() {} }
   class PointLight { constructor() { this.position = { set: vi.fn() }; } }
   class DirectionalLight { constructor() { this.position = { set: vi.fn() }; } }
   class FogExp2 { constructor() {} }
+  class Box3 {
+    constructor() {
+      this.min = { x: 0, y: 0, z: 0 };
+      this.max = { x: 0, y: 0, z: 0 };
+    }
+    setFromObject() { return this; }
+    expandByScalar() { return this.clone(); }
+    clone() {
+      const b = new Box3();
+      b.min = { ...this.min };
+      b.max = { ...this.max };
+      b.expandByScalar = () => b.clone();
+      b.clone = () => b;
+      return b;
+    }
+  }
+
+  const DoubleSide = 2;
 
   return {
-    Scene, Mesh, Vector2, Color,
-    PlaneGeometry, BoxGeometry, CylinderGeometry, SphereGeometry, TorusGeometry,
+    Scene, Mesh, Group, Vector2, Color,
+    PlaneGeometry, BoxGeometry, CylinderGeometry, SphereGeometry, TorusGeometry, LatheGeometry,
     MeshStandardMaterial, AmbientLight, PointLight, DirectionalLight, FogExp2,
+    Box3, DoubleSide,
   };
 });
+
+// ─── Mock first-person-controller ────────────────────────────────────────────
+//
+// room-manager.js now imports setCollidableMeshes and resetCameraToRoomEntry.
+// Stub them so no THREE.Box3 or camera wiring is needed in tests.
+//
+
+vi.mock('./first-person-controller.js', () => ({
+  setCollidableMeshes: vi.fn(),
+  resetCameraToRoomEntry: vi.fn(),
+}));
+
+// ─── Mock settings-panel ──────────────────────────────────────────────────────
+//
+// room-manager.js imports areItemLabelsVisible from settings-panel.js.
+// Return false (labels off) as the default test state.
+//
+
+vi.mock('../ui/settings-panel.js', () => ({
+  areItemLabelsVisible: vi.fn(() => false),
+}));
 
 // ─── Mock state module ────────────────────────────────────────────────────────
 //

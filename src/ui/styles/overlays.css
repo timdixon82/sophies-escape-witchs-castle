@@ -440,6 +440,67 @@ dialog::backdrop {
 }
 
 /* ================================================================
+   Settings overlay
+   Centred dialog, max-width 400px.
+   ================================================================ */
+
+#overlay-settings[open] {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#overlay-settings .overlay-inner {
+  width: min(400px, calc(100% - 32px));
+}
+
+/* Settings content area */
+.settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Row: checkbox + label side by side with adequate touch target */
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--space-touch-target);
+}
+
+/* The checkbox itself — sized for touch (44×44 effective via padding). */
+.settings-checkbox {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--accent-amber);
+}
+
+/* Label for the checkbox.
+   --fg-primary on --bg-panel: 14.34:1 — passes AAA. */
+.settings-label {
+  font-size: var(--text-body-size);
+  color: var(--fg-primary);
+  cursor: pointer;
+  line-height: var(--text-body-line-height);
+}
+
+/* Descriptive note beneath each toggle. */
+.settings-description {
+  font-size: var(--text-secondary-size);
+  color: var(--fg-secondary);
+
+  /* --fg-secondary on --bg-panel: 9.31:1 — passes AAA. */
+  line-height: var(--text-secondary-line-height);
+  margin: 0;
+}
+
+/* ================================================================
    Help overlay
    Centred dialog, max-width 560px, scrollable when content
    exceeds viewport height.
