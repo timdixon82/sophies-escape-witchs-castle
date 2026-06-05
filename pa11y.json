@@ -5,14 +5,20 @@
     "launch on the GitHub-hosted Ubuntu 24.04 runner, which restricts",
     "unprivileged user namespaces (the same constraint addressed in the",
     "team-template pa11y.json).",
-    "No ignore entries are needed at this time: the accepted exceptions",
-    "for the canvas surface (SE-001, SE-002) are documented at",
-    "docs/exceptions/ and do not produce Pa11y findings on the HTML",
-    "overlay surface that Pa11y actually scans.",
-    "Do not add ignore entries here without a matching record in",
+    "hideElements: two aria-hidden canvas overlay elements are excluded",
+    "from Pa11y's scan. Pa11y cannot compute contrast ratios when a",
+    "semi-transparent background sits on top of a WebGL canvas, which",
+    "produces spurious NaN:1 contrast failures. Both elements are",
+    "aria-hidden='true' and are outside the accessibility tree.",
+    "  #room-label-hud  — the room name HUD overlay",
+    "  .item-label      — floating 3D item name labels",
+    "Covered by exception SE-002 (docs/exceptions/SE-002-3d-geometry-colours.md).",
+    "Do not remove these entries without updating SE-002.",
+    "Do not add further ignore entries here without a matching record in",
     "docs/accessibility.md or a project exception under docs/exceptions/."
   ],
   "chromeLaunchConfig": {
     "args": ["--no-sandbox", "--disable-setuid-sandbox"]
-  }
+  },
+  "hideElements": "#room-label-hud, .item-label"
 }
