@@ -15,8 +15,10 @@
    ================================================================ */
 
 dialog {
-  /* Reset UA dialog chrome. */
-  margin: 0;
+  /* Reset UA dialog chrome.
+     margin: auto restores the browser's native showModal() centring that an
+     explicit margin: 0 would suppress. */
+  margin: auto;
   padding: 0;
   border: none;
   background: none;
@@ -36,7 +38,10 @@ dialog::backdrop {
   background-color: var(--bg-overlay-scrim);
 }
 
-/* Inner container — provides the panel surface and padding. */
+/* Inner container — provides the panel surface and padding.
+   max-height: 80vh caps every dialog at 80% of the viewport height so it
+   never extends off-screen. overflow-y: auto adds a scrollbar only when the
+   content exceeds that cap, keeping the page itself still. */
 .overlay-inner {
   background-color: var(--bg-panel);
   border: var(--border-panel);
@@ -45,6 +50,8 @@ dialog::backdrop {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 @media (width >= 600px) {
@@ -109,7 +116,14 @@ dialog::backdrop {
 
 #overlay-main-menu[open] {
   position: fixed;
+
+  /* Cancel base margin: auto so inset: 0 fills the full viewport.
+     width: 100% and min-height: 100dvh override the UA width: fit-content
+     so the dialog covers the full viewport as a backdrop. */
+  margin: 0;
   inset: 0;
+  width: 100%;
+  min-height: 100dvh;
   z-index: 50;
   display: flex;
   align-items: center;
@@ -212,10 +226,13 @@ dialog::backdrop {
 
 #overlay-inventory[open] {
   position: fixed;
+
+  /* Cancel base margin: auto so the sidebar stays at the right edge.
+     inset: 0 0 0 auto sets top/right/bottom to 0 and left to auto,
+     cancelling the UA left: 0 that would otherwise override right: 0. */
+  margin: 0;
   z-index: 40;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0 0 0 auto;
   width: 320px;
   display: flex;
   flex-direction: column;
@@ -223,6 +240,9 @@ dialog::backdrop {
 
 #overlay-inventory .overlay-inner {
   height: 100%;
+
+  /* Override base max-height: the sidebar panel fills its container height. */
+  max-height: 100%;
   border-radius: 0;
   border-right: none;
   border-top: none;
@@ -378,6 +398,9 @@ dialog::backdrop {
 
 #overlay-hint[open] {
   position: fixed;
+
+  /* Cancel base margin: auto so inset: 0 fills the full viewport. */
+  margin: 0;
   inset: 0;
   z-index: 40;
   display: flex;
@@ -423,7 +446,14 @@ dialog::backdrop {
 
 #overlay-pause[open] {
   position: fixed;
+
+  /* Cancel base margin: auto so inset: 0 fills the full viewport.
+     width: 100% and min-height: 100dvh override the UA width: fit-content
+     so the dialog covers the full viewport as a backdrop. */
+  margin: 0;
   inset: 0;
+  width: 100%;
+  min-height: 100dvh;
   z-index: 50;
   display: flex;
   align-items: center;
@@ -446,6 +476,9 @@ dialog::backdrop {
 
 #overlay-settings[open] {
   position: fixed;
+
+  /* Cancel base margin: auto so inset: 0 fills the full viewport. */
+  margin: 0;
   inset: 0;
   z-index: 40;
   display: flex;
@@ -502,26 +535,31 @@ dialog::backdrop {
 
 /* ================================================================
    Help overlay
-   Centred dialog, max-width 560px, scrollable when content
-   exceeds viewport height.
+   Centred dialog, max-width 560px. Inner panel scrolls when content
+   exceeds 80vh (via base .overlay-inner rules).
    ================================================================ */
 
 #overlay-help[open] {
   position: fixed;
+
+  /* Cancel base margin: auto so inset: 0 fills the full viewport. */
+  margin: 0;
   inset: 0;
   z-index: 40;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   padding: 16px;
-  overflow-y: auto;
+
+  /* overflow-y removed: the .overlay-inner scrolls internally via the base
+     max-height: 80vh and overflow-y: auto rules. */
 }
 
 #overlay-help .overlay-inner {
   width: min(560px, calc(100% - 32px));
 
-  /* Allow inner panel to grow taller than viewport; the dialog scrolls. */
-  max-height: none;
+  /* max-height: none removed — base max-height: 80vh now applies so the inner
+     panel caps at 80vh and scrolls its content rather than scrolling the page. */
 }
 
 /* Inner panel variant for help: no centred alignment, text reads left. */
