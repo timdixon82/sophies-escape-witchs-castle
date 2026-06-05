@@ -135,20 +135,32 @@ export function initRoomManager(scene) {
 
 /**
  * Transitions to a new room.
- * Tears down the previous room's objects and builds the new room.
+ * Tears down the previous room's objects, builds the new room, then places the
+ * player near the entry door facing into the room.
+ *
+ * The entry door is the door in the NEW room whose target matches the room we
+ * came FROM. Its stored `worldPos` and `rotationY` (set by `_makeDoor`) drive
+ * the spawn offset (Fix 2). When no matching door is found — new game, or rooms
+ * whose entry door uses the legacy raw-mesh path — the fallback is room centre
+ * facing −Z, preserving the Issue 5 fix.
+ *
  * @param {string} roomId
  */
 export function enterRoom(roomId) {
   if (!_scene) return;
   if (roomId === _currentRoomId) return;
 
+  // Capture the room we are leaving before teardown clears _currentRoomId.
+  const fromRoomId = _currentRoomId;
+
   _tearDownRoom();
   _currentRoomId = roomId;
   _buildRoom(roomId);
   _updateRoomLabel(roomId);
-  // Reset camera to room entry position so the player always spawns at centre
-  // facing forward, preventing stale position from the previous room (Issue 5).
-  resetCameraToRoomEntry();
+
+  // Derive spawn position from the entry door in the newly built room.
+  const [spawnPos, facingAngleY] = _spawnFromDoor(fromRoomId);
+  resetCameraToRoomEntry(spawnPos, facingAngleY);
 }
 
 /**
@@ -322,6 +334,52 @@ function _tearDownRoom() {
   _currentAmbient = null;
   _currentAmbientBase = 0.8;
   setCollidableMeshes([]);
+}
+
+// ─── Private: entry spawn ─────────────────────────────────────────────────────
+
+/**
+ * Computes the spawn position and yaw angle for the player when entering a room.
+ *
+ * Finds the door mesh in `_interactables` whose `userData.id` matches
+ * `door-<fromRoomId>`, then offsets 0.7 m away from the door surface into the
+ * room and sets the yaw so the player faces inward.
+ *
+ * Spawn rules (yaw = 0 faces −Z):
+ *   End-wall door, +Z side  → spawn at (dx, 1.7, dz − 0.7), yaw = 0    (face −Z)
+ *   End-wall door, −Z side  → spawn at (dx, 1.7, dz + 0.7), yaw = π    (face +Z)
+ *   Left-wall door  (+π/2)  → spawn at (dx + 0.7, 1.7, dz), yaw = −π/2 (face +X)
+ *   Right-wall door (−π/2)  → spawn at (dx − 0.7, 1.7, dz), yaw = +π/2 (face −X)
+ *
+ * Falls back to ([0, 1.7, 0], 0) when no matching door or door has no worldPos.
+ *
+ * @param {string | null} fromRoomId  The room the player came from.
+ * @returns {[[number, number, number], number]}  [spawnPos, facingAngleY]
+ */
+function _spawnFromDoor(fromRoomId) {
+  if (!fromRoomId) return [[0, 1.7, 0], 0];
+
+  const doorMesh = _interactables.find((m) => m.userData.id === `door-${fromRoomId}`);
+  if (!doorMesh || !doorMesh.userData.worldPos) return [[0, 1.7, 0], 0];
+
+  const { x: dx, z: dz } = doorMesh.userData.worldPos;
+  const rotY = doorMesh.userData.rotationY ?? 0;
+
+  if (rotY > 0.01) {
+    // Left-wall door (rotationY ≈ +π/2): face +X into the room.
+    return [[dx + 0.7, 1.7, dz], -Math.PI / 2];
+  }
+  if (rotY < -0.01) {
+    // Right-wall door (rotationY ≈ −π/2): face −X into the room.
+    return [[dx - 0.7, 1.7, dz], Math.PI / 2];
+  }
+  // End-wall door (rotationY = 0).
+  if (dz > 0) {
+    // Door on the +Z end wall: face −Z into the room.
+    return [[dx, 1.7, dz - 0.7], 0];
+  }
+  // Door on the −Z end wall: face +Z into the room.
+  return [[dx, 1.7, dz + 0.7], Math.PI];
 }
 
 // ─── Private: room builders ───────────────────────────────────────────────────
@@ -755,30 +813,79 @@ function _makeItemChargedBindingCrystal(pos) {
 /**
  * Creates a door group: panel, four-piece stone frame, and an iron handle.
  * The panel is the interactable mesh; frame and handle are decorative.
+ *
+ * All parts are children of a THREE.Group positioned at `pos`. Applying
+ * `rotationY` to the group lets side-wall doors face into the room without
+ * requiring per-part position arithmetic:
+ *   - rotationY = 0           end-wall door (default)
+ *   - rotationY = Math.PI/2   left-wall door  (faces +X)
+ *   - rotationY = -Math.PI/2  right-wall door (faces -X)
+ *
+ * The group world position (px, py, pz) and rotationY are stored on the
+ * panel's userData so room-manager can derive spawn positions on entry.
+ *
+ * @param {[number, number, number]} pos         World position for the door centre.
+ * @param {string}                   targetRoomId Room ID this door leads to.
+ * @param {string}                   label        Accessible label for the door.
+ * @param {number}                   [rotationY=0] Y-axis rotation in radians.
+ * @returns {THREE.Mesh} The interactable door panel.
  */
-function _makeDoor(pos, targetRoomId, label) {
-  // Door panel (interactable)
-  const panel = _makeBox(0.9, 1.8, 0.12, 0x2a1e12, pos, { roughness: 0.95, metalness: 0.0 });
-  _addInteractable(panel, `door-${targetRoomId}`, label, 'door');
-
-  // Frame: two vertical stiles and two horizontal rails
+function _makeDoor(pos, targetRoomId, label, rotationY = 0) {
   const [px, py, pz] = pos;
-  const frameColor = 0x3d3028;
-  // Left stile
-  _add(_makeBox(0.1, 2.0, 0.14, frameColor, [px - 0.5, py, pz], { roughness: 1.0 }));
-  // Right stile
-  _add(_makeBox(0.1, 2.0, 0.14, frameColor, [px + 0.5, py, pz], { roughness: 1.0 }));
-  // Top rail
-  _add(_makeBox(1.1, 0.12, 0.14, frameColor, [px, py + 0.96, pz], { roughness: 1.0 }));
-  // Bottom rail / threshold
-  _add(_makeBox(1.1, 0.10, 0.14, frameColor, [px, py - 0.95, pz], { roughness: 1.0 }));
 
-  // Handle: small iron cylinder on the right side of the door
-  const handle = _makeCylinder(0.028, 0.028, 0.14, 0x707070, [px + 0.32, py + 0.05, pz]);
+  // Group holds all door parts; rotation is applied once here.
+  const group = new THREE.Group();
+  group.position.set(px, py, pz);
+  group.rotation.y = rotationY;
+  _scene.add(group);
+  _roomObjects.push(group);
+
+  // Helper: build a box in group-local space, register for disposal.
+  const _localBox = (w, h, d, color, lpos, opts = {}) => {
+    const mat = new THREE.MeshStandardMaterial({
+      color,
+      roughness: opts.roughness ?? 0.8,
+      metalness: opts.metalness ?? 0.0,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.0,
+    });
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    mesh.position.set(...lpos);
+    group.add(mesh);
+    _roomObjects.push(mesh); // track for geometry/material disposal on teardown
+    return mesh;
+  };
+
+  // Panel (interactable) — at the group's local origin.
+  const panel = _localBox(0.9, 1.8, 0.12, 0x2a1e12, [0, 0, 0], { roughness: 0.95, metalness: 0.0 });
+  panel.userData = {
+    interactable: true,
+    id: `door-${targetRoomId}`,
+    label,
+    type: 'door',
+    // Store world position and rotation so enterRoom() can compute spawn offset.
+    worldPos: { x: px, y: py, z: pz },
+    rotationY,
+  };
+  _interactables.push(panel);
+
+  // Frame: two vertical stiles and two horizontal rails (group-local positions).
+  const frameColor = 0x3d3028;
+  _localBox(0.1, 2.0, 0.14, frameColor, [-0.5, 0, 0], { roughness: 1.0 });
+  _localBox(0.1, 2.0, 0.14, frameColor, [0.5, 0, 0], { roughness: 1.0 });
+  _localBox(1.1, 0.12, 0.14, frameColor, [0, 0.96, 0], { roughness: 1.0 });
+  _localBox(1.1, 0.10, 0.14, frameColor, [0, -0.95, 0], { roughness: 1.0 });
+
+  // Handle: iron cylinder on the right side of the door (group-local).
+  const handleMat = new THREE.MeshStandardMaterial({
+    color: 0x707070, metalness: 0.8, roughness: 0.35,
+    emissive: 0xffffff, emissiveIntensity: 0.0,
+  });
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.14, 12), handleMat);
+  handle.position.set(0.32, 0.05, 0);
   handle.rotation.z = Math.PI / 2;
-  handle.material.metalness = 0.8;
-  handle.material.roughness = 0.35;
-  _add(handle);
+  group.add(handle);
+  _roomObjects.push(handle);
 
   return panel;
 }
@@ -884,20 +991,23 @@ function _buildStoneCorridor() {
     _add(_makeBox(alcoveW, alcoveH, alcoveD, alcoveColor, apos));
   }
 
-  // Doors to other rooms — arranged along the corridor walls
+  // Doors to other rooms — end-wall doors at z = ±D/2, side-wall doors at x = ±W/2.
+  // Side-wall doors rotate to face into the corridor:
+  //   left wall (x = −2.0): rotationY = +π/2  (faces +X)
+  //   right wall (x = +2.0): rotationY = −π/2  (faces −X)
   const doors = [
-    { pos: [0, 0.9, -D / 2 + 0.1], target: 'dungeon-cell', label: 'Door to Dungeon Cell' },
-    { pos: [-1.5, 0.9, -2.0], target: 'kitchen', label: 'Door to Kitchen' },
-    { pos: [1.5, 0.9, -2.0], target: 'library', label: 'Door to Library' },
-    { pos: [-1.5, 0.9, 2.0], target: 'great-hall', label: 'Door to Great Hall' },
-    { pos: [1.5, 0.9, 2.0], target: 'chapel', label: 'Door to Chapel' },
-    { pos: [-1.5, 0.9, 5.0], target: 'armoury', label: 'Door to Armoury' },
-    { pos: [1.5, 0.9, 5.0], target: 'tower-room', label: 'Door to Tower Room' },
-    { pos: [-1.5, 0.9, -5.5], target: 'witchs-study', label: "Door to Witch's Study" },
-    { pos: [0, 0.9, D / 2 - 0.1], target: 'castle-gate', label: 'Door to Castle Gate' },
+    { pos: [0, 0.9, -D / 2 + 0.1], target: 'dungeon-cell',  label: 'Door to Dungeon Cell',    rot: 0 },
+    { pos: [-2.0, 0.9, -2.0],       target: 'kitchen',       label: 'Door to Kitchen',          rot: Math.PI / 2 },
+    { pos: [2.0, 0.9, -2.0],        target: 'library',       label: 'Door to Library',          rot: -Math.PI / 2 },
+    { pos: [-2.0, 0.9, 2.0],        target: 'great-hall',    label: 'Door to Great Hall',       rot: Math.PI / 2 },
+    { pos: [2.0, 0.9, 2.0],         target: 'chapel',        label: 'Door to Chapel',           rot: -Math.PI / 2 },
+    { pos: [-2.0, 0.9, 5.0],        target: 'armoury',       label: 'Door to Armoury',          rot: Math.PI / 2 },
+    { pos: [2.0, 0.9, 5.0],         target: 'tower-room',    label: 'Door to Tower Room',       rot: -Math.PI / 2 },
+    { pos: [-2.0, 0.9, -5.5],       target: 'witchs-study',  label: "Door to Witch's Study",    rot: Math.PI / 2 },
+    { pos: [0, 0.9, D / 2 - 0.1],  target: 'castle-gate',   label: 'Door to Castle Gate',      rot: 0 },
   ];
   for (const d of doors) {
-    _makeDoor(d.pos, d.target, d.label);
+    _makeDoor(d.pos, d.target, d.label, d.rot);
   }
 }
 
