@@ -411,6 +411,7 @@ function _addInteractable(mesh, id, label, type) {
  */
 function _attachItemLabel(mesh, label) {
   const labelEl = document.createElement('div');
+  labelEl.className = 'item-label';
   labelEl.textContent = label;
   labelEl.setAttribute('aria-hidden', 'true');
   labelEl.style.cssText = [

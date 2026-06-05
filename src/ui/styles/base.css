@@ -45,10 +45,11 @@
   color: var(--bg-canvas, #0a0a0a);
   font: 700 14px/1.4 system-ui, sans-serif;
   text-decoration: none;
-  border-radius: 0 0 6px 0;
+  border-radius: 0 0 6px;
   z-index: 10000;
   transition: top 0.1s ease;
 }
+
 .skip-link:focus {
   top: 0;
 }
