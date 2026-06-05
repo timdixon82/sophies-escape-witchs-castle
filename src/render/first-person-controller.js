@@ -25,6 +25,7 @@ import { on } from './input/intent-bus.js';
 import { getHeldIntents } from './input/keyboard-bridge.js';
 import { getJoystickHeld } from './input/touch-bridge.js';
 import { getCurrentRoomId } from './room-manager.js';
+import { play as playSound } from '../audio/audio-manager.js';
 
 // Look sensitivity constants (degrees).
 const KEYBOARD_LOOK_SPEED_DEG = 90; // degrees per second for keyboard look
@@ -55,6 +56,12 @@ const DEFAULT_BOUNDS = { hw: 2.2, hd: 2.7 };
 // Applied to camera.rotation (order = 'YXZ' set in engine.js).
 let _yaw = 0; // radians, horizontal
 let _pitch = 0; // radians, vertical
+
+/** Accumulated distance (metres) since the last footstep sound. */
+let _footstepAccum = 0;
+
+/** Distance between footstep sounds (metres). */
+const FOOTSTEP_INTERVAL = 0.5;
 
 /** @type {import('three').PerspectiveCamera | null} */
 let _camera = null;
@@ -166,6 +173,11 @@ export function updateFirstPersonController(deltaMs) {
     const clampedX = Math.max(-bounds.hw, Math.min(bounds.hw, newX));
     const clampedZ = Math.max(-bounds.hd, Math.min(bounds.hd, newZ));
     const resolved = _resolveCollision(_camera.position.x, _camera.position.z, clampedX, clampedZ);
+
+    const movedX = resolved.x - _camera.position.x;
+    const movedZ = resolved.z - _camera.position.z;
+    _footstepAccum += Math.sqrt(movedX * movedX + movedZ * movedZ);
+
     _camera.position.x = resolved.x;
     _camera.position.z = resolved.z;
   }
@@ -184,8 +196,19 @@ export function updateFirstPersonController(deltaMs) {
     const clampedX = Math.max(-bounds.hw, Math.min(bounds.hw, newX));
     const clampedZ = Math.max(-bounds.hd, Math.min(bounds.hd, newZ));
     const resolved = _resolveCollision(_camera.position.x, _camera.position.z, clampedX, clampedZ);
+
+    const movedX = resolved.x - _camera.position.x;
+    const movedZ = resolved.z - _camera.position.z;
+    _footstepAccum += Math.sqrt(movedX * movedX + movedZ * movedZ);
+
     _camera.position.x = resolved.x;
     _camera.position.z = resolved.z;
+  }
+
+  // Play footstep sound every FOOTSTEP_INTERVAL metres of actual movement.
+  if (_footstepAccum >= FOOTSTEP_INTERVAL) {
+    _footstepAccum -= FOOTSTEP_INTERVAL;
+    playSound('footstep');
   }
 
   // Apply current yaw/pitch to camera.

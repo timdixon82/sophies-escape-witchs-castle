@@ -31,6 +31,8 @@ import { dispatch, getState } from '../core/state.js';
 import { getCamera } from './engine.js';
 import { getInteractables, enterRoom, removeItemMesh } from './room-manager.js';
 import { PUZZLE_DEFINITIONS, ITEMS } from '../assets/room-data.js';
+import { play as playSound } from '../audio/audio-manager.js';
+import { speak } from '../ui/speech-manager.js';
 
 /** @type {THREE.Raycaster} */
 const _raycaster = new THREE.Raycaster();
@@ -255,7 +257,10 @@ function _handleItemPickup(objectId, announce) {
   refreshInteractionList(announce);
 
   const label = ITEMS[itemId]?.label ?? itemId;
-  announce(`You picked up: ${label}.`);
+  const pickupMsg = `You picked up: ${label}.`;
+  announce(pickupMsg);
+  playSound('pickup');
+  speak(pickupMsg);
 }
 
 // ─── Door navigation ──────────────────────────────────────────────────────────
@@ -280,12 +285,23 @@ function _handleDoor(objectId, announce, state) {
 
   dispatch({ type: 'ENTER_ROOM', payload: { roomId: targetRoomId } });
   enterRoom(targetRoomId);
+  playSound('door');
   announce(`You enter the ${_roomName(targetRoomId)}.`);
 }
 
 // ─── Puzzle target ────────────────────────────────────────────────────────────
 
 function _handlePuzzleTarget(targetId, announce, state) {
+  // Require explicit item selection before using on a puzzle target (Issue 3).
+  const selectedItemId = state.inventory.selectedItemIds[0] ?? null;
+
+  if (!selectedItemId) {
+    const msg = 'Select an item from your inventory first.';
+    announce(msg);
+    speak(msg);
+    return;
+  }
+
   // Find the puzzle for this target.
   const puzzleEntry = Object.entries(PUZZLE_DEFINITIONS).find(
     ([, def]) => def.target === targetId
@@ -293,6 +309,8 @@ function _handlePuzzleTarget(targetId, announce, state) {
 
   if (!puzzleEntry) {
     announce('Nothing happens.');
+    dispatch({ type: 'DESELECT_ITEM', payload: { itemId: selectedItemId } });
+    _updateSelectedItemHud(null);
     return;
   }
 
@@ -313,25 +331,30 @@ function _handlePuzzleTarget(targetId, announce, state) {
     return;
   }
 
-  // Check if player has all required items.
+  // Check if the selected item is one of the required items.
   const heldNotConsumed = new Set(
     state.inventory.items.filter((i) => !i.consumed).map((i) => i.itemId)
   );
+  const selectedIsRequired = puzzleDef.requiredItems.includes(selectedItemId);
   const allRequiredHeld = puzzleDef.requiredItems.every((id) => heldNotConsumed.has(id));
 
-  if (!allRequiredHeld) {
-    const missing = puzzleDef.requiredItems.filter((id) => !heldNotConsumed.has(id));
-    const missingNames = missing.map((id) => ITEMS[id]?.label ?? id).join(', ');
-    announce(`You need: ${missingNames}.`);
+  if (!selectedIsRequired || !allRequiredHeld) {
+    // Wrong item or missing items — deselect and give feedback.
+    const failMsg = "That doesn't seem to work.";
+    announce(failMsg);
+    speak(failMsg);
+    dispatch({ type: 'DESELECT_ITEM', payload: { itemId: selectedItemId } });
+    _updateSelectedItemHud(null);
     return;
   }
 
   // Fire the use-item-on-target intent. The reducer does the rest.
-  const itemId = state.inventory.selectedItemIds[0] ?? puzzleDef.requiredItems[0];
-  dispatch({ type: 'USE_ITEM_ON_TARGET', payload: { itemId, targetId } });
+  dispatch({ type: 'USE_ITEM_ON_TARGET', payload: { itemId: selectedItemId, targetId } });
+  _updateSelectedItemHud(null);
 
   const updatedState = getState();
   if (updatedState.puzzles[puzzleId]?.state === 'solved') {
+    playSound('puzzleSolve');
     let msg = 'Puzzle solved!';
     if (puzzleDef.producedItem) {
       const producedLabel = ITEMS[puzzleDef.producedItem]?.label ?? puzzleDef.producedItem;
@@ -341,12 +364,17 @@ function _handlePuzzleTarget(targetId, announce, state) {
     // Special case: gate puzzle completes the game.
     if (puzzleId === 'gate-pedestals') {
       dispatch({ type: 'GAME_COMPLETE' });
-      announce('You have placed all three items. The gate swings open. You escape! Congratulations!');
+      const gateMsg = 'You have placed all three items. The gate swings open. You escape! Congratulations!';
+      announce(gateMsg);
+      speak(gateMsg);
     } else {
       announce(msg);
+      speak(msg);
     }
   } else {
-    announce('Nothing happens. Make sure you have all the required items.');
+    const nothingMsg = 'Nothing happens. Make sure you have all the required items.';
+    announce(nothingMsg);
+    speak(nothingMsg);
   }
 }
 
@@ -356,11 +384,15 @@ function _handleExamine(objectId, announce, state) {
   if (objectId === 'examine-portrait-clue') {
     const alreadyNoted = state.inventory.items.some((i) => i.itemId === 'portrait-clue');
     if (alreadyNoted) {
-      announce('You have already noted the symbols: chalice, quill, and star.');
+      const msg = 'You have already noted the symbols: chalice, quill, and star.';
+      announce(msg);
+      speak(msg);
       return;
     }
     dispatch({ type: 'EXAMINE_CLUE', payload: { clueItemId: 'portrait-clue' } });
-    announce('You observe three symbols on the portraits: a chalice, a quill, and a star. You note these down.');
+    const clueMsg = 'You observe three symbols on the portraits: a chalice, a quill, and a star. You note these down.';
+    announce(clueMsg);
+    speak(clueMsg);
   }
 }
 
@@ -426,6 +458,38 @@ function _updateKeyboardNavList(announce) {
     li.appendChild(btn);
     _keyboardNavList.appendChild(li);
   }
+}
+
+// ─── Selected-item HUD ────────────────────────────────────────────────────────
+
+/**
+ * Updates the selected-item HUD indicator (Issue 3).
+ * @param {string | null} itemId — item ID or null to hide
+ */
+function _updateSelectedItemHud(itemId) {
+  const hud = document.getElementById('selected-item-hud');
+  if (!hud) return;
+  if (itemId) {
+    const label = ITEMS[itemId]?.label ?? itemId;
+    hud.textContent = `Using: ${label}`;
+    hud.hidden = false;
+  } else {
+    hud.textContent = '';
+    hud.hidden = true;
+  }
+}
+
+/**
+ * Deselects any currently selected item. Called from keyboard-bridge.js on Escape.
+ * Only deselects if an item is currently selected and no overlay is open.
+ */
+export function deselectSelectedItem() {
+  const state = getState();
+  if (state.openOverlays.length > 0) return;
+  const selectedItemId = state.inventory.selectedItemIds[0] ?? null;
+  if (!selectedItemId) return;
+  dispatch({ type: 'DESELECT_ITEM', payload: { itemId: selectedItemId } });
+  _updateSelectedItemHud(null);
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────

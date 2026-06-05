@@ -25,6 +25,7 @@
 
 import { emit } from './intent-bus.js';
 import { getState } from '../../core/state.js';
+import { deselectSelectedItem } from '../interaction-handler.js';
 
 /** Keys currently held down (for movement intents). */
 const _held = new Set();
@@ -88,12 +89,19 @@ function _onKeydown(e) {
     return;
   }
 
-  // Escape — handles overlay close and game pause.
+  // Escape — deselect item first; fall through to overlay/pause if nothing to deselect.
   if (key === 'Escape') {
     if (_overlaysOpen()) {
       emit('CLOSE_OVERLAY');
     } else {
-      emit('OPEN_PAUSE');
+      const state = getState();
+      const hasSelection = state.inventory.selectedItemIds.length > 0;
+      if (hasSelection) {
+        // Deselect the selected item instead of pausing (Issue 3).
+        deselectSelectedItem();
+      } else {
+        emit('OPEN_PAUSE');
+      }
     }
     return;
   }

@@ -19,6 +19,7 @@
 
 import { on } from '../render/input/intent-bus.js';
 import { dispatch } from '../core/state.js';
+import { play as playSound } from '../audio/audio-manager.js';
 
 /** Stack of currently open overlay IDs (topmost last). */
 const _openStack = [];
@@ -178,6 +179,9 @@ function _open(overlayId, triggerElementId) {
 
   // Notify core state.
   dispatch({ type: 'OVERLAY_OPENED', payload: { overlayName: overlayId } });
+
+  // Play menu-open sound.
+  playSound('menuOpen');
 }
 
 function _close(overlayId) {
@@ -224,6 +228,9 @@ function _close(overlayId) {
 
   // Notify core state.
   dispatch({ type: 'OVERLAY_CLOSED', payload: { overlayName: overlayId } });
+
+  // Play menu-close sound.
+  playSound('menuClose');
 }
 
 function _closeTop() {
