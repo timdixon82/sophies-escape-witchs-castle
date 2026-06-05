@@ -1,6 +1,6 @@
 # Work folder 031: SEWC popup centering and scrollbars
 
-**Status:** active
+**Status:** done
 **Triage type:** Bug fix (type 6)
 **Opened:** 2026-06-05
 
