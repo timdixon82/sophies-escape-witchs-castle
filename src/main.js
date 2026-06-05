@@ -122,7 +122,8 @@ import { mountInventoryPanel } from './ui/inventory-panel.js';
 import { mountHintPanel } from './ui/hint-panel.js';
 import { mountSettingsPanel } from './ui/settings-panel.js';
 
-import { initAudio, setMasterVolume } from './audio/audio-manager.js';
+import { initAudio } from './audio/audio-manager.js';
+import { speak } from './ui/speech-manager.js';
 import { trackPageView, trackEvent } from './analytics/analytics.js';
 import { ROOM_DESCRIPTIONS } from './assets/room-data.js';
 
@@ -148,10 +149,9 @@ async function boot() {
   _logStep('Three.js loaded — engine initialised');
   _setLoadingProgress(35, 'Engine ready.');
 
-  // 4. Initialise audio (stub in v0.1).
-  _logStep('audio initialising');
-  initAudio();
-  _logStep('audio initialised');
+  // 4. Audio init is deferred until first user gesture (browser autoplay policy).
+  // The _initAudioOnGesture listener registered in step 5 calls initAudio().
+  _logStep('audio: deferred until first gesture');
   _setLoadingProgress(45, 'Audio ready.');
 
   // 5. Install input bridges.
@@ -163,6 +163,18 @@ async function boot() {
   installTouchBridge(canvas, joystickBase, joystickKnob);
   _logStep('input bridges installed');
   _setLoadingProgress(55, 'Input ready.');
+
+  // Wire audio context init to first user gesture (browser autoplay policy).
+  // Both keydown and click/touchstart cover keyboard-only and pointer users.
+  const _initAudioOnGesture = () => {
+    initAudio();
+    window.removeEventListener('keydown', _initAudioOnGesture);
+    window.removeEventListener('click', _initAudioOnGesture);
+    window.removeEventListener('touchstart', _initAudioOnGesture);
+  };
+  window.addEventListener('keydown', _initAudioOnGesture, { once: false });
+  window.addEventListener('click', _initAudioOnGesture, { once: false });
+  window.addEventListener('touchstart', _initAudioOnGesture, { once: false });
 
   // 6. Install UI layers.
   _logStep('installing UI layers');
@@ -254,9 +266,8 @@ function _gameLoop(deltaMs) {
       dispatch({ type: 'RESUME' }); // immediately resume for now
     }
 
-    // Settings sync: apply volume to audio manager.
-    const { masterVolume } = state.settings;
-    setMasterVolume(masterVolume);
+    // Volume is managed via the settings-panel slider (sewc-volume in localStorage).
+    // No per-frame sync needed here.
   }
 
   // Per-frame hover highlight and floating label repositioning run every frame
@@ -278,7 +289,9 @@ function _gameLoop(deltaMs) {
 function _onStateChange(state, prev) {
   // Room entry narration via ARIA live region.
   if (state.currentRoomId !== prev.currentRoomId) {
-    _announce(ROOM_DESCRIPTIONS[state.currentRoomId] ?? 'You have entered a new room.');
+    const roomDesc = ROOM_DESCRIPTIONS[state.currentRoomId] ?? 'You have entered a new room.';
+    _announce(roomDesc);
+    speak(roomDesc);
 
     // Track first room entry for analytics.
     if (!prev.roomsVisited.includes(state.currentRoomId)) {
@@ -342,7 +355,9 @@ function _startNewGame() {
   }, 0);
 
   // Announce game start.
-  _announce(ROOM_DESCRIPTIONS['dungeon-cell']);
+  const startDesc = ROOM_DESCRIPTIONS['dungeon-cell'];
+  _announce(startDesc);
+  speak(startDesc);
 }
 
 function _announce(message) {

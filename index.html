@@ -175,6 +175,57 @@
       </button>
     </div>
 
+    <!-- Selected-item HUD indicator (Issue 3).
+         Shown when the player selects an item from inventory for puzzle use.
+         aria-live="polite" so screen readers announce the selection change. -->
+    <div
+      id="selected-item-hud"
+      aria-live="polite"
+      aria-atomic="true"
+      hidden
+      style="
+        position:fixed;
+        bottom:80px;
+        left:50%;
+        transform:translateX(-50%);
+        z-index:15;
+        padding:5px 16px;
+        background:rgba(10,10,10,0.82);
+        color:#ffa040;
+        font:700 13px/1.5 system-ui,sans-serif;
+        border:1px solid rgba(255,160,64,0.5);
+        border-radius:4px;
+        pointer-events:none;
+        letter-spacing:0.04em;
+      "
+    ></div>
+
+    <!-- Caption overlay (Issue 6).
+         Displays text captions for speech synthesis output.
+         aria-live="polite" and role="status" so screen readers also catch it. -->
+    <div
+      id="caption-overlay"
+      aria-live="polite"
+      role="status"
+      aria-atomic="true"
+      style="
+        position:fixed;
+        bottom:68px;
+        left:50%;
+        transform:translateX(-50%);
+        z-index:14;
+        max-width:min(600px, 90vw);
+        padding:8px 18px;
+        background:rgba(0,0,0,0.82);
+        color:#ffffff;
+        font:16px/1.5 system-ui,sans-serif;
+        border-radius:6px;
+        text-align:center;
+        pointer-events:none;
+        display:none;
+      "
+    ></div>
+
     <!-- Touch joystick (shown only on touch devices during gameplay). -->
     <div id="touch-joystick-area" hidden aria-hidden="true">
       <div id="touch-joystick-base">
@@ -415,6 +466,74 @@
           </div>
           <p class="settings-description">
             When on, a text label appears above each item in the game world. Off by default.
+          </p>
+
+          <div class="settings-row settings-row-slider">
+            <label for="settings-brightness-slider" class="settings-label">
+              Brightness
+            </label>
+            <input
+              type="range"
+              id="settings-brightness-slider"
+              class="settings-slider"
+              min="0.2"
+              max="2.0"
+              step="0.1"
+              value="0.8"
+              aria-label="Brightness (0.2 is dim, 2.0 is very bright)"
+            />
+            <output for="settings-brightness-slider" id="settings-brightness-output" class="settings-slider-output">0.8</output>
+          </div>
+          <p class="settings-description">
+            Adjusts scene brightness. 0.2 is dim; 2.0 is very bright.
+          </p>
+
+          <div class="settings-row settings-row-slider">
+            <label for="settings-volume-slider" class="settings-label">
+              Volume
+            </label>
+            <input
+              type="range"
+              id="settings-volume-slider"
+              class="settings-slider"
+              min="0"
+              max="100"
+              step="1"
+              value="70"
+              aria-label="Master volume, 0 to 100"
+            />
+            <output for="settings-volume-slider" id="settings-volume-output" class="settings-slider-output">70</output>
+          </div>
+          <p class="settings-description">
+            Controls the volume for all game sounds. 0 is silent; 100 is full volume.
+          </p>
+
+          <div class="settings-row">
+            <input
+              type="checkbox"
+              id="settings-speech-checkbox"
+              class="settings-checkbox"
+            />
+            <label for="settings-speech-checkbox" class="settings-label">
+              Read aloud
+            </label>
+          </div>
+          <p class="settings-description">
+            When on, the game reads room descriptions, item names, and events aloud using speech synthesis. Off by default.
+          </p>
+
+          <div class="settings-row">
+            <input
+              type="checkbox"
+              id="settings-captions-checkbox"
+              class="settings-checkbox"
+            />
+            <label for="settings-captions-checkbox" class="settings-label">
+              Show captions
+            </label>
+          </div>
+          <p class="settings-description">
+            When on, spoken text appears as on-screen captions at the bottom of the screen. Works independently of Read aloud. Off by default.
           </p>
         </div>
       </div>

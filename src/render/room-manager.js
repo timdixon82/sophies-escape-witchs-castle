@@ -52,6 +52,19 @@ let _currentRoomId = null;
 /** @type {HTMLElement | null} */
 let _roomLabel = null;
 
+/**
+ * The ambient light for the current room.
+ * Stored so brightness changes from settings can be applied immediately.
+ * @type {THREE.AmbientLight | null}
+ */
+let _currentAmbient = null;
+
+/**
+ * The baseline ambient intensity for the current room (before brightness multiplier).
+ * @type {number}
+ */
+let _currentAmbientBase = 0.8;
+
 // ─── Design token wall colours (SE-002 exception — decorative geometry) ──────
 
 const COLOURS = {
@@ -207,6 +220,17 @@ export function getCurrentRoomId() {
 }
 
 /**
+ * Applies a brightness multiplier to the current room's ambient light.
+ * Called immediately when the brightness slider changes.
+ * @param {number} multiplier — value in 0.2–2.0 range
+ */
+export function applyBrightness(multiplier) {
+  if (_currentAmbient) {
+    _currentAmbient.intensity = _currentAmbientBase * multiplier;
+  }
+}
+
+/**
  * Repositions the floating DOM labels for all item-type interactables.
  * Call from the game loop each frame, after the camera matrices have been updated.
  *
@@ -295,6 +319,8 @@ function _tearDownRoom() {
   _roomObjects = [];
   _interactables = [];
   _propMeshes = [];
+  _currentAmbient = null;
+  _currentAmbientBase = 0.8;
   setCollidableMeshes([]);
 }
 
@@ -347,13 +373,31 @@ function _buildRoom(roomId) {
 // ─── Shared geometry helpers ──────────────────────────────────────────────────
 
 /**
+ * Reads the saved brightness multiplier from localStorage.
+ * Returns the raw stored value (0.2–2.0), defaulting to 0.8 (the new lighter baseline).
+ * @returns {number}
+ */
+function _getBrightnessMultiplier() {
+  try {
+    const stored = localStorage.getItem('sewc-brightness');
+    if (stored !== null) {
+      const v = parseFloat(stored);
+      if (!isNaN(v)) return Math.max(0.2, Math.min(2.0, v));
+    }
+  } catch {
+    // localStorage unavailable
+  }
+  return 0.8;
+}
+
+/**
  * Creates a box-room (6 planes: floor, ceiling, 4 walls).
  * Floor and ceiling use distinct materials derived from the wall colour
  * unless explicit overrides are provided.
  * @param {{ color: number, w: number, h: number, d: number, ambientIntensity?: number, floorColor?: number, ceilColor?: number }} opts
  * @returns {{ ambient: THREE.AmbientLight }}
  */
-function _makeBoxRoom({ color, w, h, d, ambientIntensity = 0.65, floorColor, ceilColor }) {
+function _makeBoxRoom({ color, w, h, d, ambientIntensity = 0.8, floorColor, ceilColor }) {
   const wallMat  = new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0.0 });
   const floorMat = new THREE.MeshStandardMaterial({ color: floorColor ?? _darken(color, 0.85), roughness: 0.98, metalness: 0.0 });
   const ceilMat  = new THREE.MeshStandardMaterial({ color: ceilColor  ?? _lighten(color, 1.1),  roughness: 0.90, metalness: 0.0 });
@@ -375,8 +419,13 @@ function _makeBoxRoom({ color, w, h, d, ambientIntensity = 0.65, floorColor, cei
 
   for (const p of planes) _add(p);
 
-  const ambient = new THREE.AmbientLight(TOKEN_FG_PRIMARY, ambientIntensity);
+  const brightnessMult = _getBrightnessMultiplier();
+  const ambient = new THREE.AmbientLight(TOKEN_FG_PRIMARY, ambientIntensity * brightnessMult);
   _add(ambient);
+
+  // Store for live brightness updates via applyBrightness().
+  _currentAmbient = ambient;
+  _currentAmbientBase = ambientIntensity;
 
   return { ambient };
 }
@@ -738,7 +787,7 @@ function _makeDoor(pos, targetRoomId, label) {
 
 function _buildDungeonCell() {
   const W = 5, H = 3.5, D = 6;
-  _makeBoxRoom({ color: COLOURS.dungeonCell, w: W, h: H, d: D, ambientIntensity: 0.15 });
+  _makeBoxRoom({ color: COLOURS.dungeonCell, w: W, h: H, d: D, ambientIntensity: 0.3 });
 
   // Two amber torch sconces at low-to-mid height on side walls
   _add(_makePointLight(TOKEN_ACCENT_AMBER, 1.2, 8, 2, [-1.8, 1.2, -1.5]));
@@ -798,7 +847,7 @@ function _buildDungeonCell() {
 
 function _buildStoneCorridor() {
   const W = 4, H = 3.5, D = 14;
-  _makeBoxRoom({ color: COLOURS.stoneCorridor, w: W, h: H, d: D, ambientIntensity: 0.1 });
+  _makeBoxRoom({ color: COLOURS.stoneCorridor, w: W, h: H, d: D, ambientIntensity: 0.25 });
 
   // Wall sconces (existing rhythm, kept as-is)
   _add(_makePointLight(TOKEN_ACCENT_AMBER, 1.0, 6, 2, [-1.5, 2.5, -4]));
@@ -856,7 +905,7 @@ function _buildStoneCorridor() {
 
 function _buildKitchen() {
   const W = 5, H = 3.2, D = 6;
-  _makeBoxRoom({ color: COLOURS.kitchen, w: W, h: H, d: D, ambientIntensity: 0.35, floorColor: 0x6a3a20 });
+  _makeBoxRoom({ color: COLOURS.kitchen, w: W, h: H, d: D, ambientIntensity: 0.5, floorColor: 0x6a3a20 });
 
   // Strong fire glow under cauldron
   _add(_makePointLight(0xff6010, 2.0, 6, 2, [0, 0.4, -1.5]));
@@ -898,7 +947,7 @@ function _buildKitchen() {
 
 function _buildLibrary() {
   const W = 6, H = 4, D = 7;
-  _makeBoxRoom({ color: COLOURS.library, w: W, h: H, d: D, ambientIntensity: 0.15 });
+  _makeBoxRoom({ color: COLOURS.library, w: W, h: H, d: D, ambientIntensity: 0.3 });
 
   // Reading lamp over desk
   _add(_makePointLight(0xffe0a0, 1.2, 5, 2, [0.5, 1.8, -0.5]));
@@ -947,7 +996,7 @@ function _buildLibrary() {
 
 function _buildGreatHall() {
   const W = 8, H = 5, D = 10;
-  _makeBoxRoom({ color: COLOURS.greatHall, w: W, h: H, d: D, ambientIntensity: 0.1 });
+  _makeBoxRoom({ color: COLOURS.greatHall, w: W, h: H, d: D, ambientIntensity: 0.3 });
 
   // Strong fireplace glow at the front/fireplace wall
   _add(_makePointLight(0xff5800, 2.0, 10, 2, [0, 0.8, D / 2 - 1.0]));
@@ -983,9 +1032,10 @@ function _buildGreatHall() {
     _addInteractable(clueTarget, 'examine-portrait-clue', 'Observe the portrait symbols (chalice, quill, star)', 'examine');
   }
 
-  // Decorative geometry: two large pillars partway down side walls
-  _add(_makeBox(0.5, H, 0.5, 0x4a4035, [-W / 2 + 0.6, H / 2, 0]));
-  _add(_makeBox(0.5, H, 0.5, 0x4a4035, [W / 2 - 0.6, H / 2, 0]));
+  // Structural pillars partway down side walls — registered as collidable so
+  // the player cannot walk through them (Issue 1: partition wall collision).
+  _addProp(_makeBox(0.5, H, 0.5, 0x4a4035, [-W / 2 + 0.6, H / 2, 0]));
+  _addProp(_makeBox(0.5, H, 0.5, 0x4a4035, [W / 2 - 0.6, H / 2, 0]));
 
   // Banner boxes flanking the portrait wall
   _add(_makeBox(0.4, 2.0, 0.06, 0x6a1a1a, [-2.4, 2.5, -D / 2 + 0.08]));
@@ -999,7 +1049,7 @@ function _buildGreatHall() {
 
 function _buildChapel() {
   const W = 6, H = 5, D = 8;
-  _makeBoxRoom({ color: COLOURS.chapel, w: W, h: H, d: D, ambientIntensity: 0.08, floorColor: 0x25253a });
+  _makeBoxRoom({ color: COLOURS.chapel, w: W, h: H, d: D, ambientIntensity: 0.25, floorColor: 0x25253a });
 
   // Stained-glass coloured lights (raised to 1.2)
   _add(_makePointLight(0x6040ff, 1.2, 8, 2, [-2.0, 3.5, 0]));
@@ -1026,9 +1076,9 @@ function _buildChapel() {
     _makeItemChapelSigil([0, 0.8, -D / 2 + 1.5]);
   }
 
-  // Decorative geometry: tapered columns flanking the altar
-  _add(_makeCylinder(0.12, 0.18, H * 0.8, 0x2a2a40, [-1.2, H * 0.4, -D / 2 + 1.8]));
-  _add(_makeCylinder(0.12, 0.18, H * 0.8, 0x2a2a40, [1.2, H * 0.4, -D / 2 + 1.8]));
+  // Structural columns flanking the altar — registered as collidable.
+  _addProp(_makeCylinder(0.12, 0.18, H * 0.8, 0x2a2a40, [-1.2, H * 0.4, -D / 2 + 1.8]));
+  _addProp(_makeCylinder(0.12, 0.18, H * 0.8, 0x2a2a40, [1.2, H * 0.4, -D / 2 + 1.8]));
 
   // Back door to corridor
   _makeDoor([0, 0.9, D / 2 - 0.05], 'stone-corridor', 'Door to Stone Corridor');
@@ -1038,7 +1088,7 @@ function _buildChapel() {
 
 function _buildArmoury() {
   const W = 6, H = 3.5, D = 7;
-  _makeBoxRoom({ color: COLOURS.armoury, w: W, h: H, d: D, ambientIntensity: 0.15 });
+  _makeBoxRoom({ color: COLOURS.armoury, w: W, h: H, d: D, ambientIntensity: 0.35 });
 
   // Cold blue-white overhead for the stone armoury
   _add(_makePointLight(0xd0e0ff, 1.0, 10, 2, [0, 3.0, 0]));
@@ -1078,7 +1128,7 @@ function _buildArmoury() {
 
 function _buildTowerRoom() {
   const W = 5, H = 5, D = 5;
-  _makeBoxRoom({ color: COLOURS.towerRoom, w: W, h: H, d: D, ambientIntensity: 0.08, floorColor: 0x1e2430 });
+  _makeBoxRoom({ color: COLOURS.towerRoom, w: W, h: H, d: D, ambientIntensity: 0.25, floorColor: 0x1e2430 });
 
   // Moonlight as a directional light from above-left
   const moonlight = new THREE.DirectionalLight(0xc0d8ff, 1.5);
@@ -1121,7 +1171,7 @@ function _buildTowerRoom() {
 
 function _buildWitchsStudy() {
   const W = 5, H = 4, D = 7;
-  _makeBoxRoom({ color: COLOURS.witchsStudy, w: W, h: H, d: D, ambientIntensity: 0.08 });
+  _makeBoxRoom({ color: COLOURS.witchsStudy, w: W, h: H, d: D, ambientIntensity: 0.25 });
 
   // Purple magic glow (raised to 1.2)
   _add(_makePointLight(TOKEN_ACCENT_PURPLE, 1.2, 6, 2, [0, 2.0, -1.0]));
@@ -1129,13 +1179,13 @@ function _buildWitchsStudy() {
   // Candle on desk — dim amber
   _add(_makePointLight(0xffa040, 0.4, 3, 2, [0.5, 1.2, 0.5]));
 
-  // Lectern (place torn page)
+  // Lectern (place torn page) — collidable prop so player cannot walk through it.
   const lectern = _makeBox(0.6, 1.2, 0.4, 0x300820, [0, 0.6, -1.5], { roughness: 0.8 });
-  _add(lectern);
+  _addProp(lectern);
 
-  // Plate on desk (place sigil + star chart)
+  // Plate on desk (place sigil + star chart) — desk is collidable.
   const desk = _makeBox(1.8, 0.08, 1.0, 0x200010, [0.5, 0.9, 0.5], { roughness: 0.7 });
-  _add(desk);
+  _addProp(desk);
   const plate = _makeBox(0.8, 0.04, 0.8, 0x505060, [0.5, 0.95, 0.5], { roughness: 0.5, metalness: 0.3 });
   _add(plate);
 
@@ -1166,7 +1216,7 @@ function _buildWitchsStudy() {
 
 function _buildCastleGate() {
   const W = 6, H = 5, D = 5;
-  _makeBoxRoom({ color: COLOURS.castleGate, w: W, h: H, d: D, ambientIntensity: 0.3 });
+  _makeBoxRoom({ color: COLOURS.castleGate, w: W, h: H, d: D, ambientIntensity: 0.5 });
 
   // Strong daylight glow from the gate (brighter, wider reach)
   _add(_makePointLight(0xfff8e0, 3.5, 16, 2, [0, 2.5, -D / 2 + 0.5]));
@@ -1200,9 +1250,9 @@ function _buildCastleGate() {
     _add(openGlow);
   }
 
-  // Decorative geometry: large stone gate-pillar boxes flanking the bars
-  _add(_makeBox(0.5, H, 0.5, 0x5a5040, [-2.2, H / 2, -D / 2 + 0.3]));
-  _add(_makeBox(0.5, H, 0.5, 0x5a5040, [2.2, H / 2, -D / 2 + 0.3]));
+  // Stone gate-pillar boxes flanking the bars — registered as collidable.
+  _addProp(_makeBox(0.5, H, 0.5, 0x5a5040, [-2.2, H / 2, -D / 2 + 0.3]));
+  _addProp(_makeBox(0.5, H, 0.5, 0x5a5040, [2.2, H / 2, -D / 2 + 0.3]));
 
   // Back door to corridor
   _makeDoor([0, 0.9, D / 2 - 0.05], 'stone-corridor', 'Door to Stone Corridor');

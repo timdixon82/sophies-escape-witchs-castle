@@ -14,6 +14,23 @@
 import { getState, subscribe, dispatch } from '../core/state.js';
 import { ITEMS, ITEM_COMBINATIONS } from '../assets/room-data.js';
 
+/**
+ * Updates the selected-item HUD indicator (Issue 3).
+ * @param {string | null} itemId
+ */
+function _updateSelectedItemHud(itemId) {
+  const hud = document.getElementById('selected-item-hud');
+  if (!hud) return;
+  if (itemId) {
+    const label = ITEMS[itemId]?.label ?? itemId;
+    hud.textContent = `Using: ${label}`;
+    hud.hidden = false;
+  } else {
+    hud.textContent = '';
+    hud.hidden = true;
+  }
+}
+
 /** @type {(() => void) | null} */
 let _unsubscribe = null;
 
@@ -130,8 +147,15 @@ function _onItemClick(itemId) {
   const state = getState();
   if (state.inventory.selectedItemIds.includes(itemId)) {
     dispatch({ type: 'DESELECT_ITEM', payload: { itemId } });
+    // If this was the primary (first) selected item, clear the HUD.
+    if (state.inventory.selectedItemIds[0] === itemId) {
+      _updateSelectedItemHud(null);
+    }
   } else {
     dispatch({ type: 'SELECT_ITEM', payload: { itemId } });
+    // Update HUD to show the newly selected item (first selected item is the "using" item).
+    const newState = getState();
+    _updateSelectedItemHud(newState.inventory.selectedItemIds[0] ?? null);
   }
 }
 
