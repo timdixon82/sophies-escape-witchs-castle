@@ -11,3 +11,4 @@ Carol's pre-release test pass for v0.5.0 found two blocking items. Work folder o
 
 PR #26 (fix/sewc-release-prep) merged to main. Carol re-tested: all checks pass.
 PR #16 (release-please v0.5.0) merged to main with Tim's approval. v0.5.0 shipped.
+- [2026-06-05 16:40:01] subagent completed
