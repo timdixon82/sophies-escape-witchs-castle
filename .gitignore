@@ -70,3 +70,12 @@ migration-preview/
 
 # CI-only Pa11y config, derived from pa11y.json in the accessibility workflow. Generated, never committed.
 pa11y.ci.json
+
+# Claire AI tool local directory — machine-local, not for the repo.
+.claire/
+
+# Playwright MCP tool local directory — console logs and working files, not for the repo.
+.playwright-mcp/
+
+# Session handoff documents — written at end of each session, local only.
+HANDOFF.md
