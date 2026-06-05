@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.5.0](https://github.com/timdixon82/sophies-escape-witchs-castle/compare/v0.4.0...v0.5.0) (2026-06-05)
+
+
+### Features
+
+* **render:** differentiate floor and ceiling materials per room ([7e9be94](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/7e9be94d3d917fa19ffcb856771624d452edb1f9))
+* **render:** distinctive per-item 3D shapes (spoon, candle, petal, key, etc.) ([5e5e964](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/5e5e9648a23d3f754d04788bab9f78c4e2ea2234))
+* **render:** door frame, rails, and handle on all room doors ([9989c16](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/9989c162c67ee5d28cc23049466b01d80cd75f25))
+* **render:** full visual overhaul — cartoon-style detail, bug fix (item pickup) ([1446fcb](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/1446fcbb14819726bf1770ff49ac107489e2228a))
+* **render:** full visual overhaul — cartoon-style detail, bug fix (item pickup) ([1446fcb](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/1446fcbb14819726bf1770ff49ac107489e2228a))
+* **render:** per-room fog and background colour ([29e8536](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/29e8536679429ec3f42adc327adec39f793ab979))
+* **render:** room geometry additions — pillars, beams, alcoves, weapon racks ([cec4f03](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/cec4f03634703d1dc974302ab5f1f8599f7e56ef))
+* **render:** tailored per-room lighting rigs ([ccc6c45](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/ccc6c4540e77eac4935b60ab4ec56544ceda2889))
+* **scripts:** add next-q.sh for session Q-number display ([0bb2feb](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/0bb2feb84c4e56f66e2131b84566db84f9c63224))
+* **scripts:** add next-q.sh so session-start displays the next Q-number ([f49c788](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/f49c788f9625ad6999b9c30e89f7e3d16fa4da6b))
+
+
+### Bug Fixes
+
+* **a11y:** add skip link for WCAG 2.4.1 Bypass Blocks ([032bda2](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/032bda29fdf6f5826fbb42011a99ea58c5d8a112))
+* **a11y:** add tabindex=-1 to main landmark and bump SW cache version ([19752c4](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/19752c4b06be0502d7e50bb72abe00b3c0c988a8))
+* **a11y:** update loading bar aria-valuenow during boot sequence ([225af7b](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/225af7b5901e9040ddc045a0c1b55049d37a2e36))
+* **a11y:** update loading bar aria-valuenow during boot sequence ([cbde6c8](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/cbde6c8ae6633ad37e49b368c4010a144da3da24))
+* **a11y:** use hidden span as skip-link focus target (display:contents blocks focus on main) ([16b0aa3](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/16b0aa343044c7e2cb5c94ade98c5cf072e965cb))
+* CI ChromeDriver path, skip link, cell door navigation ([771779d](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/771779dcd209a80266be62229a60560a02924f86))
+* CI ChromeDriver path, skip link, cell door navigation ([771779d](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/771779dcd209a80266be62229a60560a02924f86))
+* **ci:** broaden ChromeDriver path detection and pass --chrome-path to axe ([e6ccb5c](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/e6ccb5c0419eb173d57c78e6ead3db370f83c196))
+* **controls:** A/D and arrow keys now strafe left/right ([358f09b](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/358f09ba62658ba34893509f31c3700219fd95cb))
+* **controls:** correct room-manager import path in first-person-controller ([5ffbe8e](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/5ffbe8eb07fb88081bbf93f45435f2927f63b217))
+* **controls:** full rotation, strafe, and per-room movement bounds ([40bd800](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/40bd80044bc2655cd7085cf2bf08b8449f7273f5))
+* **controls:** full rotation, strafe, and per-room movement bounds ([40bd800](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/40bd80044bc2655cd7085cf2bf08b8449f7273f5))
+* **controls:** per-room movement bounds replace hardcoded 2.3×2.7m clamp ([2d62667](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/2d62667c12d330a5d71113b05b0b2000e1208ffb))
+* **controls:** remove 80° yaw clamp — allow full 360° horizontal rotation ([66f5fea](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/66f5feafcb154e3a9342d7711f4baafc196d78e4))
+* **gameplay:** cell door becomes navigable after puzzle solved ([07d631a](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/07d631a5c7e87dce98a5ea5ec8ee8ccd2f3855f3))
+* **gameplay:** remove item mesh from scene on pickup ([3b5c600](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/3b5c600c7398843880840e909e78200185816986))
+* **lint:** remove unused _makeItemSmallIronKey (key is produced by cauldron puzzle, not room-placed) ([fab3a8a](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/fab3a8a08e2514dcee294e1bef769d9c8a3f2920))
+* **release:** stylelint errors in base.css and pa11y.json ignore entries for SE-002 false positives ([23477b2](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/23477b27a227217e2f6bd1466213cbec7139d53a))
+* **release:** v0.5.0 release prep — stylelint and pa11y false positives ([4d856be](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/4d856bef139b6505fb20061a1af3ea5c74f45354))
+* **release:** v0.5.0 release prep — stylelint and pa11y false positives ([4d856be](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/4d856bef139b6505fb20061a1af3ea5c74f45354))
+* **render:** add missing ITEMS import to room-manager.js ([83cf9ad](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/83cf9ad6e02bb9247d4eb34ba3b44e665491ffe1))
+* **render:** default emissive to white so hover highlight works on all item colours ([bd57dc8](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/bd57dc8c96c03ddb045384f4b3b6447f75a3d4ec))
+* **render:** remove item mesh surgically on pickup, fixing stale keyboard-nav entry ([dac0ff6](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/dac0ff61d840838046428b400085068b640d61f8))
+
 ## [0.4.0](https://github.com/timdixon82/sophies-escape-witchs-castle/compare/v0.3.0...v0.4.0) (2026-05-25)
 
 
