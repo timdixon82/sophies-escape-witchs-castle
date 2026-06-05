@@ -117,9 +117,13 @@ dialog::backdrop {
 #overlay-main-menu[open] {
   position: fixed;
 
-  /* Cancel base margin: auto so inset: 0 fills the full viewport. */
+  /* Cancel base margin: auto so inset: 0 fills the full viewport.
+     width: 100% and min-height: 100dvh override the UA width: fit-content
+     so the dialog covers the full viewport as a backdrop. */
   margin: 0;
   inset: 0;
+  width: 100%;
+  min-height: 100dvh;
   z-index: 50;
   display: flex;
   align-items: center;
@@ -223,12 +227,12 @@ dialog::backdrop {
 #overlay-inventory[open] {
   position: fixed;
 
-  /* Cancel base margin: auto so the sidebar stays at the right edge. */
+  /* Cancel base margin: auto so the sidebar stays at the right edge.
+     inset: 0 0 0 auto sets top/right/bottom to 0 and left to auto,
+     cancelling the UA left: 0 that would otherwise override right: 0. */
   margin: 0;
   z-index: 40;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0 0 0 auto;
   width: 320px;
   display: flex;
   flex-direction: column;
@@ -443,9 +447,13 @@ dialog::backdrop {
 #overlay-pause[open] {
   position: fixed;
 
-  /* Cancel base margin: auto so inset: 0 fills the full viewport. */
+  /* Cancel base margin: auto so inset: 0 fills the full viewport.
+     width: 100% and min-height: 100dvh override the UA width: fit-content
+     so the dialog covers the full viewport as a backdrop. */
   margin: 0;
   inset: 0;
+  width: 100%;
+  min-height: 100dvh;
   z-index: 50;
   display: flex;
   align-items: center;
