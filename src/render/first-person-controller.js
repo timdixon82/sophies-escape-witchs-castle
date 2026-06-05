@@ -6,13 +6,13 @@
  *
  * Look range constraints (FR-NAV-02):
  *   Horizontal: unlimited — full 360° rotation allowed.
- *   Vertical: ±45° (90° total) — prevents the camera from flipping upside-down.
+ *   Vertical: ±85° — nearly straight down to nearly straight up.
  *
  * Reduced-motion: when prefers-reduced-motion is set, look acceleration
  * is removed (linear movement, no easing).
  *
- * Collision: simple floor-clamping and forward-ray check in v0.1.
- * Full wall collision via Raycaster is a TODO for v0.2.
+ * Collision: room-boundary clamping + per-object Box3 collision.
+ * Prop meshes registered via setCollidableMeshes() are checked each frame.
  *
  * NOTE: This file imports from 'three' indirectly via engine.js
  * (which is the only direct importer). The camera reference is
@@ -20,6 +20,7 @@
  * That preserves the facade pattern from ADR 002.
  */
 
+import * as THREE from 'three';
 import { on } from './input/intent-bus.js';
 import { getHeldIntents } from './input/keyboard-bridge.js';
 import { getJoystickHeld } from './input/touch-bridge.js';
@@ -30,7 +31,10 @@ const KEYBOARD_LOOK_SPEED_DEG = 90; // degrees per second for keyboard look
 const MOVE_SPEED = 3.0; // metres per second
 
 // Clamp range in radians.
-const MAX_VERTICAL_RAD = (45 * Math.PI) / 180; // ±45°
+const MAX_VERTICAL_RAD = (85 * Math.PI) / 180; // ±85°
+
+/** Player body radius used for collision response (metres). */
+const PLAYER_RADIUS = 0.3;
 
 /** Half-dimensions per room in metres, leaving a 0.3m body buffer from walls. */
 const ROOM_BOUNDS = {
@@ -62,6 +66,14 @@ let _reducedMotionQuery = null;
 let _lookDeltaUnsub = null;
 
 /**
+ * Collidable prop meshes for the current room.
+ * Each entry has a pre-computed Box3 bounding box.
+ * Updated when the room changes via setCollidableMeshes().
+ * @type {Array<{ box: THREE.Box3 }>}
+ */
+let _collidables = [];
+
+/**
  * Initialises the first-person controller.
  * @param {import('three').PerspectiveCamera} camera
  */
@@ -85,6 +97,38 @@ export function disposeFirstPersonController() {
   if (_lookDeltaUnsub) _lookDeltaUnsub();
   _lookDeltaUnsub = null;
   _camera = null;
+  _collidables = [];
+}
+
+/**
+ * Registers collidable prop meshes for the current room.
+ * Call from room-manager.js after building a room.
+ * Only non-interactive meshes (furniture, props) should be registered here;
+ * interactive items are small pick-ups that do not block movement.
+ * @param {THREE.Mesh[]} meshes
+ */
+export function setCollidableMeshes(meshes) {
+  _collidables = meshes.map((m) => {
+    const box = new THREE.Box3().setFromObject(m);
+    return { box };
+  });
+}
+
+/**
+ * Resets the player's position and look direction to the room entry defaults.
+ * Call from room-manager.js immediately after a room transition so the player
+ * always spawns at room centre facing forward (−Z), regardless of where they
+ * were standing in the previous room.
+ *
+ * Without this reset, the camera position persists across transitions and the
+ * player may respawn directly in front of the dungeon-cell door, causing the
+ * "two doors both lead to dungeon" symptom Tim reported (Issue 5).
+ */
+export function resetCameraToRoomEntry() {
+  if (!_camera) return;
+  _camera.position.set(0, 1.7, 0);
+  _yaw = 0;
+  _pitch = 0;
 }
 
 /**
@@ -117,10 +161,13 @@ export function updateFirstPersonController(deltaMs) {
     const newX = _camera.position.x + sinYaw * moveZ * speed;
     const newZ = _camera.position.z + cosYaw * moveZ * speed;
 
-    // Per-room boundary clamp (placeholder; full raycast in v0.2).
+    // Room boundary clamp, then per-object collision check.
     const bounds = _getRoomBounds();
-    _camera.position.x = Math.max(-bounds.hw, Math.min(bounds.hw, newX));
-    _camera.position.z = Math.max(-bounds.hd, Math.min(bounds.hd, newZ));
+    const clampedX = Math.max(-bounds.hw, Math.min(bounds.hw, newX));
+    const clampedZ = Math.max(-bounds.hd, Math.min(bounds.hd, newZ));
+    const resolved = _resolveCollision(_camera.position.x, _camera.position.z, clampedX, clampedZ);
+    _camera.position.x = resolved.x;
+    _camera.position.z = resolved.z;
   }
 
   // Strafe — perpendicular to the camera's facing direction.
@@ -134,8 +181,11 @@ export function updateFirstPersonController(deltaMs) {
     const newX = _camera.position.x + Math.cos(_yaw) * moveX * speed;
     const newZ = _camera.position.z - Math.sin(_yaw) * moveX * speed;
     const bounds = _getRoomBounds();
-    _camera.position.x = Math.max(-bounds.hw, Math.min(bounds.hw, newX));
-    _camera.position.z = Math.max(-bounds.hd, Math.min(bounds.hd, newZ));
+    const clampedX = Math.max(-bounds.hw, Math.min(bounds.hw, newX));
+    const clampedZ = Math.max(-bounds.hd, Math.min(bounds.hd, newZ));
+    const resolved = _resolveCollision(_camera.position.x, _camera.position.z, clampedX, clampedZ);
+    _camera.position.x = resolved.x;
+    _camera.position.z = resolved.z;
   }
 
   // Apply current yaw/pitch to camera.
@@ -164,6 +214,65 @@ function _applyLookDelta(dx, dy) {
   _yaw -= (dx * Math.PI) / 180;
   _pitch -= (dy * Math.PI) / 180;
 
-  // Clamp vertical pitch to ±45° (90° total, FR-NAV-02).
+  // Clamp vertical pitch to ±85° (nearly straight down/up, FR-NAV-02).
   _pitch = Math.max(-MAX_VERTICAL_RAD, Math.min(MAX_VERTICAL_RAD, _pitch));
+}
+
+/**
+ * Checks the proposed new position (newX, newZ) against all registered
+ * collidable meshes. If the player's body sphere (radius PLAYER_RADIUS,
+ * centre Y = camera position Y) would overlap a bounding box, the movement
+ * axis that caused the overlap is cancelled.
+ *
+ * Axes are resolved independently so the player can slide along a surface
+ * rather than stopping dead.
+ *
+ * @param {number} oldX previous X position
+ * @param {number} oldZ previous Z position
+ * @param {number} newX proposed X position (after boundary clamp)
+ * @param {number} newZ proposed Z position (after boundary clamp)
+ * @returns {{ x: number, z: number }}
+ */
+function _resolveCollision(oldX, oldZ, newX, newZ) {
+  if (_collidables.length === 0) return { x: newX, z: newZ };
+
+  // Camera Y stays constant (1.6m eye height).
+  const y = _camera ? _camera.position.y : 1.6;
+  const r = PLAYER_RADIUS;
+
+  let resolvedX = newX;
+  let resolvedZ = newZ;
+
+  for (const { box } of _collidables) {
+    // Test proposed position: expand box by player radius and check centre point.
+    const expanded = box.clone().expandByScalar(r);
+
+    const inX = resolvedX >= expanded.min.x && resolvedX <= expanded.max.x;
+    const inY = y >= expanded.min.y && y <= expanded.max.y;
+    const inZ = resolvedZ >= expanded.min.z && resolvedZ <= expanded.max.z;
+
+    if (inX && inY && inZ) {
+      // There is an overlap. Try rolling back each axis independently.
+      const tryOldX_newZ = oldX >= expanded.min.x && oldX <= expanded.max.x
+        ? null // old X also inside — X slide won't help
+        : oldX;
+      const tryNewX_oldZ = oldZ >= expanded.min.z && oldZ <= expanded.max.z
+        ? null
+        : oldZ;
+
+      if (tryOldX_newZ !== null) {
+        // Slide along Z — revert X to old position.
+        resolvedX = oldX;
+      } else if (tryNewX_oldZ !== null) {
+        // Slide along X — revert Z to old position.
+        resolvedZ = oldZ;
+      } else {
+        // Both axes blocked — stop completely.
+        resolvedX = oldX;
+        resolvedZ = oldZ;
+      }
+    }
+  }
+
+  return { x: resolvedX, z: resolvedZ };
 }

@@ -157,6 +157,22 @@
         </svg>
         <span class="hud-btn-label">Help</span>
       </button>
+
+      <!-- Settings button. -->
+      <button
+        type="button"
+        id="hud-settings-btn"
+        aria-label="Settings"
+        aria-expanded="false"
+        aria-controls="overlay-settings"
+        class="hud-btn"
+      >
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span class="hud-btn-label">Settings</span>
+      </button>
     </div>
 
     <!-- Touch joystick (shown only on touch devices during gameplay). -->
@@ -360,6 +376,47 @@
             </li>
           </ul>
         </nav>
+      </div>
+    </dialog>
+
+    <!-- Settings overlay -->
+    <dialog
+      id="overlay-settings"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-heading"
+    >
+      <div class="overlay-inner">
+        <div class="overlay-header">
+          <h2 id="settings-heading" class="overlay-title">Settings</h2>
+          <button
+            type="button"
+            class="overlay-close-btn"
+            aria-label="Close settings"
+            data-overlay-close="overlay-settings"
+          >
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="settings-content">
+          <div class="settings-row">
+            <input
+              type="checkbox"
+              id="settings-item-labels-checkbox"
+              class="settings-checkbox"
+            />
+            <label for="settings-item-labels-checkbox" class="settings-label">
+              Show item labels
+            </label>
+          </div>
+          <p class="settings-description">
+            When on, a text label appears above each item in the game world. Off by default.
+          </p>
+        </div>
       </div>
     </dialog>
 

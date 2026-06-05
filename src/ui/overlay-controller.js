@@ -37,6 +37,7 @@ export function installOverlayController() {
   _unsubs.push(on('TOGGLE_HINTS', () => _toggle('overlay-hint', 'hud-hint-btn')));
   _unsubs.push(on('OPEN_PAUSE', () => _open('overlay-pause', 'hud-pause-btn')));
   _unsubs.push(on('TOGGLE_HELP', () => _toggle('overlay-help', 'hud-help-btn')));
+  _unsubs.push(on('TOGGLE_SETTINGS', () => _toggle('overlay-settings', 'hud-settings-btn')));
   _unsubs.push(on('CLOSE_OVERLAY', () => _closeTop()));
 
   // Focus trap: NEXT_FOCUSABLE / PREV_FOCUSABLE (WCAG 2.1.2).
@@ -85,6 +86,9 @@ export function installOverlayController() {
   });
   document.getElementById('hud-help-btn')?.addEventListener('click', () => {
     _toggle('overlay-help', 'hud-help-btn');
+  });
+  document.getElementById('hud-settings-btn')?.addEventListener('click', () => {
+    _toggle('overlay-settings', 'hud-settings-btn');
   });
 }
 
@@ -210,6 +214,7 @@ function _close(overlayId) {
     'overlay-hint': 'hud-hint-btn',
     'overlay-pause': 'hud-pause-btn',
     'overlay-help': 'hud-help-btn',
+    'overlay-settings': 'hud-settings-btn',
   };
   const triggerElId = triggerMap[overlayId];
   if (triggerElId) {

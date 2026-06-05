@@ -25,6 +25,8 @@
 import * as THREE from 'three';
 import { getState } from '../core/state.js';
 import { ITEMS } from '../assets/room-data.js';
+import { setCollidableMeshes, resetCameraToRoomEntry } from './first-person-controller.js';
+import { areItemLabelsVisible } from '../ui/settings-panel.js';
 
 /** @type {THREE.Scene | null} */
 let _scene = null;
@@ -34,6 +36,15 @@ let _roomObjects = [];
 
 /** @type {THREE.Mesh[]} — interactable meshes for the current room. */
 let _interactables = [];
+
+/**
+ * Decorative prop meshes that block movement.
+ * Walls and floor/ceiling planes are not included (the boundary-clamp handles
+ * those). Only solid 3D props (cauldron, chest, desk, shelf, etc.) are here.
+ * Populated during room build; cleared on teardown.
+ * @type {THREE.Mesh[]}
+ */
+let _propMeshes = [];
 
 /** @type {string | null} */
 let _currentRoomId = null;
@@ -122,6 +133,9 @@ export function enterRoom(roomId) {
   _currentRoomId = roomId;
   _buildRoom(roomId);
   _updateRoomLabel(roomId);
+  // Reset camera to room entry position so the player always spawns at centre
+  // facing forward, preventing stale position from the previous room (Issue 5).
+  resetCameraToRoomEntry();
 }
 
 /**
@@ -204,6 +218,19 @@ export function getCurrentRoomId() {
  * @param {THREE.WebGLRenderer} renderer
  */
 export function updateItemLabels(camera, renderer) {
+  // Respect the "Show item labels" setting. When off, hide all labels and skip
+  // projection work. When on, project each label to screen space as before.
+  const labelsOn = areItemLabelsVisible();
+
+  if (!labelsOn) {
+    // Hide all labels efficiently without projecting geometry.
+    for (const mesh of _interactables) {
+      const labelEl = mesh.userData.labelEl;
+      if (labelEl) labelEl.style.display = 'none';
+    }
+    return;
+  }
+
   const size = renderer.getSize(new THREE.Vector2());
   const halfW = size.x / 2;
   const halfH = size.y / 2;
@@ -254,8 +281,21 @@ function _tearDownRoom() {
       }
     }
   }
+
+  // Some interactable meshes (e.g. the bent-spoon handle) hold a labelEl but
+  // are not themselves entries in _roomObjects — their parent Group is. Walk
+  // _interactables to catch any labelEl not already removed above.
+  for (const mesh of _interactables) {
+    if (mesh.userData && mesh.userData.labelEl) {
+      mesh.userData.labelEl.remove();
+      mesh.userData.labelEl = null;
+    }
+  }
+
   _roomObjects = [];
   _interactables = [];
+  _propMeshes = [];
+  setCollidableMeshes([]);
 }
 
 // ─── Private: room builders ───────────────────────────────────────────────────
@@ -299,6 +339,9 @@ function _buildRoom(roomId) {
     default:
       _buildGenericRoom(roomId);
   }
+
+  // Register solid props for per-object collision detection.
+  setCollidableMeshes(_propMeshes);
 }
 
 // ─── Shared geometry helpers ──────────────────────────────────────────────────
@@ -404,6 +447,20 @@ function _addInteractable(mesh, id, label, type) {
 }
 
 /**
+ * Adds a solid decorative prop to the scene and registers it for player collision.
+ * Use for furniture-scale objects (cauldron, chest, shelf, etc.) that the player
+ * should not be able to walk through. Small item pick-ups do not need this —
+ * they are collected before the player reaches them.
+ * @param {THREE.Mesh} mesh
+ * @returns {THREE.Mesh}
+ */
+function _addProp(mesh) {
+  _add(mesh);
+  _propMeshes.push(mesh);
+  return mesh;
+}
+
+/**
  * Attaches a floating DOM label (aria-hidden, visual only) to a mesh.
  * Stores it on mesh.userData.labelEl so the render loop can reposition it each frame.
  * @param {THREE.Mesh} mesh
@@ -434,31 +491,86 @@ function _attachItemLabel(mesh, label) {
 
 function _makeItemBentSpoon(pos) {
   const label = ITEMS['bent-spoon'].label;
-  const mesh = _makeBox(0.05, 0.05, 0.4, 0xa0a0a0, pos, { metalness: 0.8, roughness: 0.3 });
-  mesh.rotation.z = 0.15;
-  _addInteractable(mesh, 'item-bent-spoon', label, 'item');
-  _attachItemLabel(mesh, label);
-  return mesh;
+  // Group: handle (long thin cylinder) + bowl (wider flattened cylinder), bent at an angle.
+  const handleGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.28, 8);
+  const bowlGeo   = new THREE.CylinderGeometry(0.035, 0.018, 0.06, 8);
+  const mat = new THREE.MeshStandardMaterial({ color: 0xa8a8a8, metalness: 0.85, roughness: 0.2 });
+  const handle = new THREE.Mesh(handleGeo, mat);
+  const bowl   = new THREE.Mesh(bowlGeo,   mat);
+
+  // Position bowl at the end of the handle and tilt the handle to show the bend.
+  handle.position.set(0, 0, 0);
+  bowl.position.set(0.07, 0.15, 0);
+
+  const group = new THREE.Group();
+  group.add(handle);
+  group.add(bowl);
+  group.position.set(...pos);
+  group.rotation.z = 0.4; // visible bend
+
+  _scene.add(group);
+  _roomObjects.push(group);
+
+  // Make the handle the interactable target.
+  handle.userData = { interactable: true, id: 'item-bent-spoon', label, type: 'item' };
+  _interactables.push(handle);
+  _attachItemLabel(handle, label);
+  return handle;
 }
 
 function _makeItemCandleStub(pos) {
   const label = ITEMS['candle-stub'].label;
-  const mesh = _makeCylinder(0.055, 0.065, 0.18, 0xf0ead8, pos);
-  mesh.material.roughness = 0.7;
-  _addInteractable(mesh, 'item-candle-stub', label, 'item');
-  _attachItemLabel(mesh, label);
-  // Tiny amber wick light
+  // Stubby wax cylinder (wider than tall — it's a used-down candle).
+  const waxMat = new THREE.MeshStandardMaterial({ color: 0xf0ead8, roughness: 0.75, metalness: 0.0 });
+  const waxGeo = new THREE.CylinderGeometry(0.055, 0.065, 0.10, 10);
+  const wax = new THREE.Mesh(waxGeo, waxMat);
+  wax.position.set(...pos);
+
+  // Thin dark wick on top.
+  const wickMat = new THREE.MeshStandardMaterial({ color: 0x1a1008, roughness: 0.9 });
+  const wickGeo = new THREE.CylinderGeometry(0.004, 0.004, 0.05, 6);
+  const wick = new THREE.Mesh(wickGeo, wickMat);
+  wick.position.set(pos[0], pos[1] + 0.075, pos[2]);
+
+  _addInteractable(wax, 'item-candle-stub', label, 'item');
+  _attachItemLabel(wax, label);
+  _add(wick);
+
+  // Tiny amber wick light.
   const wickLight = new THREE.PointLight(0xffa040, 0.3, 0.6, 2);
-  wickLight.position.set(pos[0], pos[1] + 0.09 + 0.05, pos[2]);
+  wickLight.position.set(pos[0], pos[1] + 0.11, pos[2]);
   _add(wickLight);
-  return mesh;
+  return wax;
 }
 
 function _makeItemMoonflowerPetal(pos) {
   const label = ITEMS['moonflower-petal'].label;
-  const mesh = _makeCylinder(0.18, 0.18, 0.025, TOKEN_ACCENT_PURPLE, pos);
-  mesh.material.emissive.setHex(TOKEN_ACCENT_PURPLE);
-  mesh.material.emissiveIntensity = 0.6;
+  // Elliptical flat disc — wider than deep, suggesting a leaf/petal shape.
+  const geo = new THREE.CylinderGeometry(0.0, 0.0, 0.0, 6); // placeholder, overridden below
+  // Build a flat ellipse with LatheGeometry points (cross-section = narrow teardrop).
+  const petalGeo = new THREE.LatheGeometry(
+    [
+      new THREE.Vector2(0, -0.09),
+      new THREE.Vector2(0.05, -0.04),
+      new THREE.Vector2(0.12, 0.0),
+      new THREE.Vector2(0.08, 0.06),
+      new THREE.Vector2(0, 0.09),
+    ],
+    8 // segments around the Y axis
+  );
+  geo.dispose(); // dispose the placeholder
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xd0b8ff,
+    emissive: TOKEN_ACCENT_PURPLE,
+    emissiveIntensity: 0.5,
+    roughness: 0.4,
+    metalness: 0.0,
+    side: THREE.DoubleSide,
+  });
+  const mesh = new THREE.Mesh(petalGeo, mat);
+  // Lay flat on the surface.
+  mesh.rotation.x = Math.PI / 2;
+  mesh.position.set(...pos);
   _addInteractable(mesh, 'item-moonflower-petal', label, 'item');
   _attachItemLabel(mesh, label);
   return mesh;
@@ -466,7 +578,13 @@ function _makeItemMoonflowerPetal(pos) {
 
 function _makeItemOilSoakedRag(pos) {
   const label = ITEMS['oil-soaked-rag'].label;
-  const mesh = _makeBox(0.22, 0.05, 0.18, 0x3a2a1a, pos, { roughness: 1.0 });
+  // Bundled cloth: a non-uniform blob created by scaling a sphere unevenly.
+  const geo = new THREE.SphereGeometry(0.1, 6, 5);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x2e1e0e, roughness: 1.0, metalness: 0.0 });
+  const mesh = new THREE.Mesh(geo, mat);
+  // Scale to look like a crumpled flat bundle rather than a ball.
+  mesh.scale.set(1.4, 0.45, 1.0);
+  mesh.position.set(...pos);
   _addInteractable(mesh, 'item-oil-soaked-rag', label, 'item');
   _attachItemLabel(mesh, label);
   return mesh;
@@ -517,16 +635,20 @@ function _makeItemTornSpellBookPage(pos) {
 
 function _makeItemArmouryChestKey(pos) {
   const label = ITEMS['armoury-chest-key'].label;
-  // Shaft (interactable)
-  const shaft = _makeBox(0.06, 0.06, 0.28, 0x505050, pos, { metalness: 0.8, roughness: 0.4 });
+  // Brass-toned key: shaft + bow ring + two teeth.
+  const color = 0xc8902a; // warm brass
+  const shaft = _makeBox(0.05, 0.05, 0.30, color, pos, { metalness: 0.7, roughness: 0.3 });
   _addInteractable(shaft, 'item-armoury-chest-key', label, 'item');
   _attachItemLabel(shaft, label);
-  // Bow (decorative torus)
-  const bowGeo = new THREE.TorusGeometry(0.06, 0.022, 8, 16);
-  const bowMat = new THREE.MeshStandardMaterial({ color: 0x505050, metalness: 0.8, roughness: 0.4, emissive: 0xffffff, emissiveIntensity: 0.0 });
+  // Bow (ring at the grip end).
+  const bowGeo = new THREE.TorusGeometry(0.055, 0.018, 8, 16);
+  const bowMat = new THREE.MeshStandardMaterial({ color, metalness: 0.7, roughness: 0.3 });
   const bow = new THREE.Mesh(bowGeo, bowMat);
-  bow.position.set(pos[0], pos[1], pos[2] - 0.14);
+  bow.position.set(pos[0], pos[1], pos[2] - 0.155);
   _add(bow);
+  // Teeth: two small boxes on the blade end.
+  _add(_makeBox(0.05, 0.055, 0.06, color, [pos[0], pos[1] + 0.05, pos[2] + 0.08], { metalness: 0.7, roughness: 0.3 }));
+  _add(_makeBox(0.05, 0.055, 0.04, color, [pos[0], pos[1] + 0.05, pos[2] + 0.12], { metalness: 0.7, roughness: 0.3 }));
   return shaft;
 }
 
@@ -746,9 +868,9 @@ function _buildKitchen() {
   const cauldron = _makeCylinder(0.5, 0.4, 0.7, 0x222222, [0, 0.35, -1.5]);
   _addInteractable(cauldron, 'kitchen-cauldron', 'Cauldron (use moonflower petal, salt, and mushroom)', 'puzzle');
 
-  // Shelves on left wall
+  // Shelves on left wall — collidable prop so player cannot walk through it.
   const shelf1 = _makeBox(1.5, 0.1, 0.3, 0x4a3020, [-2.2, 1.8, 0], { roughness: 1.0 });
-  _add(shelf1);
+  _addProp(shelf1);
 
   const state = getState();
 
@@ -790,9 +912,9 @@ function _buildLibrary() {
     _add(shelf);
   }
 
-  // Reading desk
+  // Reading desk — collidable prop so player cannot walk through it.
   const desk = _makeBox(1.5, 0.08, 0.8, 0x3a2810, [0.5, 0.9, -0.5], { roughness: 0.8 });
-  _add(desk);
+  _addProp(desk);
 
   // Symbol order scroll on desk (readable clue — not consumed)
   const state = getState();

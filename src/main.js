@@ -120,6 +120,7 @@ import { installInteractionHandler, refreshInteractionList, tickHighlight } from
 import { installOverlayController, showMainMenu, closeOverlayById } from './ui/overlay-controller.js';
 import { mountInventoryPanel } from './ui/inventory-panel.js';
 import { mountHintPanel } from './ui/hint-panel.js';
+import { mountSettingsPanel } from './ui/settings-panel.js';
 
 import { initAudio, setMasterVolume } from './audio/audio-manager.js';
 import { trackPageView, trackEvent } from './analytics/analytics.js';
@@ -168,6 +169,7 @@ async function boot() {
   installOverlayController();
   mountInventoryPanel();
   mountHintPanel();
+  mountSettingsPanel();
   _logStep('UI layers installed');
   _setLoadingProgress(65, 'UI ready.');
 
