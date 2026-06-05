@@ -298,8 +298,11 @@ function _onStateChange(state, prev) {
       trackEvent('room-entered', state.currentRoomId);
     }
 
-    // Rebuild interaction list for new room.
-    refreshInteractionList(_announce);
+    // NOTE: refreshInteractionList is NOT called here. It is called at the end
+    // of _handleDoor (in interaction-handler.js) AFTER enterRoom() has finished
+    // building the new room's interactables. Calling it here (synchronously
+    // inside dispatch, before enterRoom runs) would populate the list with the
+    // departing room's objects. See work folder 032.
   }
 
   // Puzzle solved — rebuild room to show newly-accessible items/objects.
