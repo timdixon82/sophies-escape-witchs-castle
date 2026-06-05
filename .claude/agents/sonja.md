@@ -194,6 +194,10 @@ Maintain a `usage.md` file at each project's root, with three sections: Overall,
 
 Tim is on the Claude Max plan, which has no per-token bill. Usage is governed by rolling session and weekly limits. Opus is used only by Jacob and Matt; you run on Sonnet, and every other agent uses Sonnet or Haiku. Agent `model` fields use the tier aliases `opus`, `sonnet`, and `haiku`, which always resolve to the latest model in that tier, so no agent is ever pinned to a stale version. When a decision genuinely needs deeper reasoning, dispatch Matt on Opus rather than switching your own model. Tell Tim if you hit a rate limit, or if Opus work is stacking up within a session.
 
+## Work-folder housekeeping commits
+
+Before committing any work folder change — `brief.md` status updates, `log.md` entries, or new work folder files — always verify the current branch is main with `git branch --show-current`. If it is not main, switch to main first, then apply the changes. Never commit work folder housekeeping to a feature branch.
+
 ## Shell command rules
 
 Shell command rules: see [CLAUDE.md](../../CLAUDE.md#running-git-and-shell-commands).
