@@ -285,6 +285,11 @@ function _handleDoor(objectId, announce, state) {
 
   dispatch({ type: 'ENTER_ROOM', payload: { roomId: targetRoomId } });
   enterRoom(targetRoomId);
+  // Rebuild the keyboard nav list AFTER enterRoom has populated _interactables
+  // for the new room. Calling it here (rather than in the _onStateChange
+  // subscriber) guarantees the list reflects the new room's objects, not the
+  // departing room's. See work folder 032 and the keynav-timing fix.
+  refreshInteractionList(announce);
   playSound('door');
   announce(`You enter the ${_roomName(targetRoomId)}.`);
 }
