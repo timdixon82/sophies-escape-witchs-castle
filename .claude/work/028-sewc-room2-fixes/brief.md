@@ -1,6 +1,6 @@
 # Work folder 028: SEWC room 2 gameplay and UX fixes
 
-**Status:** active
+**Status:** done
 **Triage type:** Small feature / Bug fix (types 6 and 7)
 **Opened:** 2026-06-05
 
