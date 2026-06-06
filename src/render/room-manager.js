@@ -611,6 +611,18 @@ function _attachItemLabel(mesh, label) {
     'white-space:nowrap',
     'display:none',
   ].join(';');
+
+  // On touch devices add a small "Tap" badge so the affordance is obvious.
+  // aria-hidden: the badge is purely visual; the item label already names the action.
+  // Guard typeof window: in the Node test environment window is not defined.
+  if (typeof window !== 'undefined' && 'ontouchstart' in window) {
+    const tapBadge = document.createElement('span');
+    tapBadge.className = 'tap-badge';
+    tapBadge.textContent = 'Tap';
+    tapBadge.setAttribute('aria-hidden', 'true');
+    labelEl.appendChild(tapBadge);
+  }
+
   document.body.appendChild(labelEl);
   mesh.userData.labelEl = labelEl;
 }
@@ -619,14 +631,17 @@ function _attachItemLabel(mesh, label) {
 
 function _makeItemBentSpoon(pos) {
   const label = ITEMS['bent-spoon'].label;
-  // Group: handle (long thin cylinder) + bowl (wider flattened cylinder), bent at an angle.
+  // Group: handle (long thin cylinder) + bowl (very shallow cylinder).
+  // The group is rotated flat so the spoon lies on the floor as if dropped.
   const handleGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.28, 8);
-  const bowlGeo   = new THREE.CylinderGeometry(0.035, 0.018, 0.06, 8);
+  // Shallow bowl: 8mm deep (0.008), wider top than bottom to read as a spoon bowl.
+  const bowlGeo   = new THREE.CylinderGeometry(0.04, 0.025, 0.008, 10);
   const mat = new THREE.MeshStandardMaterial({ color: 0xa8a8a8, metalness: 0.85, roughness: 0.2 });
   const handle = new THREE.Mesh(handleGeo, mat);
   const bowl   = new THREE.Mesh(bowlGeo,   mat);
 
-  // Position bowl at the end of the handle and tilt the handle to show the bend.
+  // Bowl sits at the end of the handle in local space (same Y plane as handle
+  // after the group rotation makes everything lie flat).
   handle.position.set(0, 0, 0);
   bowl.position.set(0.07, 0.15, 0);
 
@@ -634,18 +649,33 @@ function _makeItemBentSpoon(pos) {
   group.add(handle);
   group.add(bowl);
   group.position.set(...pos);
-  group.rotation.z = 0.4; // visible bend
+  // Lay flat on the floor; slight sideways tilt adds a natural dropped look.
+  group.rotation.x = -Math.PI / 2;
+  group.rotation.z = 0.15;
 
   _scene.add(group);
   _roomObjects.push(group);
 
-  // Make the handle the interactable target.
-  // companions: the group holds both handle and bowl; removing the group from the
-  // scene removes all bent-spoon geometry when the item is picked up.
-  handle.userData = { interactable: true, id: 'item-bent-spoon', label, type: 'item', companions: [group] };
-  _interactables.push(handle);
-  _attachItemLabel(handle, label);
-  return handle;
+  // Invisible hitbox centred on the group — much larger than the spoon geometry
+  // so the raycaster can hit it reliably without pixel-perfect aim.
+  const hitbox = new THREE.Mesh(
+    new THREE.BoxGeometry(0.16, 0.16, 0.35),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
+  );
+  hitbox.userData = {
+    interactable: true,
+    id: 'item-bent-spoon',
+    label,
+    type: 'item',
+    // companions: the group holds all visible geometry; removing it clears the
+    // spoon from the scene when the item is picked up.
+    companions: [group],
+  };
+  hitbox.position.set(0, 0, 0); // centred on the group
+  group.add(hitbox);
+  _interactables.push(hitbox);
+  _attachItemLabel(hitbox, label);
+  return hitbox;
 }
 
 function _makeItemCandleStub(pos) {

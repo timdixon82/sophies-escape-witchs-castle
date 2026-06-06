@@ -62,6 +62,7 @@ vi.mock('three', () => {
   class TorusGeometry { constructor() { return makeGeometry(); } }
   class LatheGeometry { constructor() { return makeGeometry(); } }
   class MeshStandardMaterial { constructor() { return makeMaterial(); } }
+  class MeshBasicMaterial { constructor() { return makeMaterial(); } }
   class AmbientLight { constructor() {} }
   class PointLight { constructor() { this.position = { set: vi.fn() }; } }
   class DirectionalLight { constructor() { this.position = { set: vi.fn() }; } }
@@ -88,7 +89,7 @@ vi.mock('three', () => {
   return {
     Scene, Mesh, Group, Vector2, Color,
     PlaneGeometry, BoxGeometry, CylinderGeometry, SphereGeometry, TorusGeometry, LatheGeometry,
-    MeshStandardMaterial, AmbientLight, PointLight, DirectionalLight, FogExp2,
+    MeshStandardMaterial, MeshBasicMaterial, AmbientLight, PointLight, DirectionalLight, FogExp2,
     Box3, DoubleSide,
   };
 });
@@ -284,9 +285,8 @@ describe('removeItemMesh: companion object cleanup', () => {
   });
 
   it('removes the spoon group from scene when bent-spoon is picked up', () => {
-    // bent-spoon: handle (interactable, inside group) + group (companion holding handle+bowl).
-    // scene.remove(handle) is still called even though it is a no-op in real Three.js.
-    // scene.remove(group) is called by the companion scan.
+    // bent-spoon: invisible hitbox (interactable, child of group) + group (companion).
+    // scene.remove(hitbox) → call 1; scene.remove(group) via companion scan → call 2.
     // Expect exactly 2 remove calls.
     removeItemMesh('bent-spoon');
     expect(removeSpy).toHaveBeenCalledTimes(2);
