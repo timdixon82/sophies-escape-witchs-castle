@@ -321,7 +321,7 @@ describe('removeItemMesh: companion object cleanup', () => {
 //
 // Items registered via _addInteractable must have a transparent BoxGeometry
 // child hitbox in _interactables rather than the raw mesh. The hitbox ensures
-// a minimum 0.14 m target size so small items (keys, petals) are easy to pick
+// a minimum 0.30 m target size so small items (keys, petals) are easy to pick
 // up via raycasting on both mouse and touch devices.
 //
 

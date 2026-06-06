@@ -255,7 +255,7 @@ export function getCurrentRoomId() {
 /**
  * Applies a brightness multiplier to the current room's ambient light.
  * Called immediately when the brightness slider changes.
- * @param {number} multiplier — value in 0.2–2.0 range
+ * @param {number} multiplier — value in 0.2–4.0 range
  */
 export function applyBrightness(multiplier) {
   if (_currentAmbient) {
@@ -453,7 +453,7 @@ function _buildRoom(roomId) {
 
 /**
  * Reads the saved brightness multiplier from localStorage.
- * Returns the raw stored value (0.2–2.0), defaulting to 0.8 (the new lighter baseline).
+ * Returns the raw stored value (0.2–4.0), defaulting to 0.8 (the new lighter baseline).
  * @returns {number}
  */
 function _getBrightnessMultiplier() {
@@ -461,7 +461,7 @@ function _getBrightnessMultiplier() {
     const stored = localStorage.getItem('sewc-brightness');
     if (stored !== null) {
       const v = parseFloat(stored);
-      if (!isNaN(v)) return Math.max(0.2, Math.min(2.0, v));
+      if (!isNaN(v)) return Math.max(0.2, Math.min(4.0, v));
     }
   } catch {
     // localStorage unavailable
@@ -573,9 +573,9 @@ function _addInteractable(mesh, id, label, type) {
   const bb = mesh.geometry.boundingBox;
   const size = new THREE.Vector3();
   bb.getSize(size);
-  const hx = Math.max(size.x, 0.14);
-  const hy = Math.max(size.y, 0.14);
-  const hz = Math.max(size.z, 0.14);
+  const hx = Math.max(size.x, 0.30);
+  const hy = Math.max(size.y, 0.30);
+  const hz = Math.max(size.z, 0.30);
 
   // Invisible child mesh that acts as the raycaster target.
   // depthWrite: false prevents the hitbox from writing to the depth buffer,
