@@ -1,6 +1,6 @@
 # Work folder 040: SEWC inventory redesign, spoon fixes, iPad gesture
 
-**Status:** active
+**Status:** done
 **Triage type:** Small feature + bug fix (type 7)
 **Opened:** 2026-06-06
 
