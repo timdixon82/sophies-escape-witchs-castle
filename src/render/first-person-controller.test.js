@@ -94,6 +94,34 @@ function makeCamera(x = 0, y = 1.7, z = 0) {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
+describe('initFirstPersonController', () => {
+  let camera;
+
+  beforeEach(() => {
+    camera = makeCamera();
+  });
+
+  afterEach(() => {
+    disposeFirstPersonController();
+  });
+
+  it('sets camera.near to 0.05', () => {
+    initFirstPersonController(camera);
+    expect(camera.near).toBe(0.05);
+  });
+
+  it('calls camera.updateProjectionMatrix after adjusting near plane', () => {
+    initFirstPersonController(camera);
+    expect(camera.updateProjectionMatrix).toHaveBeenCalled();
+  });
+
+  it('calls camera.add with the Sophie model group', () => {
+    initFirstPersonController(camera);
+    // createSophieModel is mocked to return { isSophieModel: true }
+    expect(camera.add).toHaveBeenCalledWith({ isSophieModel: true });
+  });
+});
+
 describe('resetCameraToRoomEntry', () => {
   let camera;
 

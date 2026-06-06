@@ -57,46 +57,61 @@ function _makePart(geometry, colour) {
 export function createSophieModel() {
   const group = new THREE.Group();
 
+  // All positions are in camera-local space (z = -0.3 places parts 30 cm in
+  // front of the lens). With a 75° vertical FoV the NDC y-formula is:
+  //   y_NDC = y_local / 0.3 / tan(37.5°) ≈ y_local / 0.230
+  // A part is on-screen when |y_NDC| ≤ 1, i.e. |y_local| ≤ ~0.23.
+  //
+  // Final calibrated positions (camera-local, verified in-browser):
+  //   Body/dress  y = -0.18   top of dress near bottom of screen when looking ahead
+  //   Legs        y = -0.30   below dress, visible when looking down ~30°
+  //   Shoes       y = -0.40   feet, visible when looking steeply down
+  //   Arms        y = -0.20   lower-left/right edges, faintly visible at all times
+  //   Hair        y = +0.05   barely above screen centre, mostly out of frame
+  //
+  // The model is parented to the camera so its screen position does not change
+  // as the camera pitches — it behaves as a fixed HUD-style body view.
+
   // Body / dress
   const body = _makePart(new THREE.BoxGeometry(0.28, 0.35, 0.14), COLOUR_DRESS);
-  body.position.set(0, -0.55, -0.3);
+  body.position.set(0, -0.18, -0.3);
   group.add(body);
 
   // Left leg
   const leftLeg = _makePart(new THREE.CylinderGeometry(0.04, 0.04, 0.25), COLOUR_FLESH);
-  leftLeg.position.set(-0.08, -0.845, -0.3);
+  leftLeg.position.set(-0.08, -0.30, -0.3);
   group.add(leftLeg);
 
   // Right leg
   const rightLeg = _makePart(new THREE.CylinderGeometry(0.04, 0.04, 0.25), COLOUR_FLESH);
-  rightLeg.position.set(0.08, -0.845, -0.3);
+  rightLeg.position.set(0.08, -0.30, -0.3);
   group.add(rightLeg);
 
   // Left shoe
   const leftShoe = _makePart(new THREE.BoxGeometry(0.06, 0.04, 0.1), COLOUR_SHOE);
-  leftShoe.position.set(-0.08, -0.99, -0.25);
+  leftShoe.position.set(-0.08, -0.40, -0.3);
   group.add(leftShoe);
 
   // Right shoe
   const rightShoe = _makePart(new THREE.BoxGeometry(0.06, 0.04, 0.1), COLOUR_SHOE);
-  rightShoe.position.set(0.08, -0.99, -0.25);
+  rightShoe.position.set(0.08, -0.40, -0.3);
   group.add(rightShoe);
 
   // Left arm
   const leftArm = _makePart(new THREE.CylinderGeometry(0.03, 0.03, 0.25), COLOUR_FLESH);
-  leftArm.position.set(-0.22, -0.58, -0.3);
+  leftArm.position.set(-0.22, -0.20, -0.3);
   leftArm.rotation.z = -0.3;
   group.add(leftArm);
 
   // Right arm
   const rightArm = _makePart(new THREE.CylinderGeometry(0.03, 0.03, 0.25), COLOUR_FLESH);
-  rightArm.position.set(0.22, -0.58, -0.3);
+  rightArm.position.set(0.22, -0.20, -0.3);
   rightArm.rotation.z = 0.3;
   group.add(rightArm);
 
   // Hair
   const hair = _makePart(new THREE.BoxGeometry(0.22, 0.14, 0.18), COLOUR_HAIR);
-  hair.position.set(0, 0.1, -0.3);
+  hair.position.set(0, 0.05, -0.3);
   group.add(hair);
 
   return group;
