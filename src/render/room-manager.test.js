@@ -74,6 +74,7 @@ vi.mock('three', () => {
   class TorusGeometry { constructor() { return makeGeometry(); } }
   class LatheGeometry { constructor() { return makeGeometry(); } }
   class MeshStandardMaterial { constructor() { return makeMaterial(); } }
+  class MeshBasicMaterial { constructor() { return makeMaterial(); } }
   class AmbientLight { constructor() {} }
   class PointLight { constructor() { this.position = { set: vi.fn() }; } }
   class DirectionalLight { constructor() { this.position = { set: vi.fn() }; } }
@@ -100,7 +101,7 @@ vi.mock('three', () => {
   return {
     Scene, Mesh, Group, Vector2, Vector3, Color,
     PlaneGeometry, BoxGeometry, CylinderGeometry, SphereGeometry, TorusGeometry, LatheGeometry,
-    MeshStandardMaterial, AmbientLight, PointLight, DirectionalLight, FogExp2,
+    MeshStandardMaterial, MeshBasicMaterial, AmbientLight, PointLight, DirectionalLight, FogExp2,
     Box3, DoubleSide,
   };
 });
