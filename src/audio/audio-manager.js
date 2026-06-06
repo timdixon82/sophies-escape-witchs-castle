@@ -25,8 +25,11 @@ let _masterGain = null;
 /** @type {boolean} */
 let _initialised = false;
 
-/** @type {AudioBufferSourceNode | null} — ambient pink-noise loop */
+/** @type {AudioBufferSourceNode | null} — ambient brown-noise base loop */
 let _ambientSource = null;
+
+/** @type {AudioBufferSourceNode | null} — ambient crackle layer */
+let _ambientCrackSource = null;
 
 /** @type {GainNode | null} — gain for the ambient loop */
 let _ambientGain = null;
@@ -110,11 +113,15 @@ export function playEventSound(_eventName) {
 /** Alias — no-op since ambient is managed internally. @param {string} _roomId */
 export function setRoomAmbient(_roomId) {}
 
-/** Stops the ambient loop. */
+/** Stops the ambient loop (both brown noise and crackle layers). */
 export function stopAmbient() {
   if (_ambientSource) {
     try { _ambientSource.stop(); } catch { /* already stopped */ }
     _ambientSource = null;
+  }
+  if (_ambientCrackSource) {
+    try { _ambientCrackSource.stop(); } catch { /* already stopped */ }
+    _ambientCrackSource = null;
   }
 }
 
@@ -267,42 +274,74 @@ function _playMenuClick(freq) {
 }
 
 /**
- * Ambient: very low-volume pink noise loop, subtle presence.
- * Pink noise is approximated by filtering white noise through a shelf filter.
+ * Ambient: two-layer candle/fire sound — warm brown-noise base plus sparse
+ * crackle pops. All procedurally generated with the Web Audio API.
  * Safe to call multiple times — only one instance runs at a time.
  */
 function _startAmbient() {
   if (!_ctx || !_masterGain) return;
   if (_ambientSource) return; // already running
 
-  // Generate 2 s of noise, then loop.
-  const bufSize = _ctx.sampleRate * 2;
+  // ── Layer 1: brown noise base ──────────────────────────────────────────────
+  // Brown noise is approximated by integrating white noise (1/f² spectrum).
+  // Sounds warmer and deeper than pink noise, like a low rumble from candles.
+  const bufSize = _ctx.sampleRate * 3;
   const buf = _ctx.createBuffer(1, bufSize, _ctx.sampleRate);
   const data = buf.getChannelData(0);
-
-  // Approximate pink noise via Paul Kellet's filter.
-  let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+  let lastOut = 0;
   for (let i = 0; i < bufSize; i++) {
     const w = Math.random() * 2 - 1;
-    b0 = 0.99886 * b0 + w * 0.0555179;
-    b1 = 0.99332 * b1 + w * 0.0750759;
-    b2 = 0.96900 * b2 + w * 0.1538520;
-    b3 = 0.86650 * b3 + w * 0.3104856;
-    b4 = 0.55000 * b4 + w * 0.5329522;
-    b5 = -0.7616 * b5 - w * 0.0168980;
-    data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11;
-    b6 = w * 0.115926;
+    lastOut = (lastOut + 0.02 * w) / 1.02;
+    data[i] = lastOut * 3.5;
   }
+  const brownSrc = _ctx.createBufferSource();
+  brownSrc.buffer = buf;
+  brownSrc.loop = true;
 
-  const src = _ctx.createBufferSource();
-  src.buffer = buf;
-  src.loop = true;
+  const lowpass = _ctx.createBiquadFilter();
+  lowpass.type = 'lowpass';
+  lowpass.frequency.value = 600;
+  lowpass.Q.value = 0.7;
 
   _ambientGain = _ctx.createGain();
-  _ambientGain.gain.value = 0.04; // very subtle
+  _ambientGain.gain.value = 0.06;
 
-  src.connect(_ambientGain);
+  brownSrc.connect(lowpass);
+  lowpass.connect(_ambientGain);
   _ambientGain.connect(_masterGain);
-  src.start();
-  _ambientSource = src;
+  brownSrc.start();
+  _ambientSource = brownSrc;
+
+  // ── Layer 2: crackle pops ──────────────────────────────────────────────────
+  // A 4 s buffer of mostly silence with ~30 sparse random impulse pops.
+  // Band-passed to give a woody, natural crack, like candle wax popping.
+  const popBufSize = _ctx.sampleRate * 4;
+  const popBuf = _ctx.createBuffer(1, popBufSize, _ctx.sampleRate);
+  const popData = popBuf.getChannelData(0);
+  for (let p = 0; p < 30; p++) {
+    const t = Math.floor(Math.random() * (popBufSize - 200));
+    const amp = 0.15 + Math.random() * 0.25;
+    const len = 80 + Math.floor(Math.random() * 120);
+    for (let s = 0; s < len; s++) {
+      popData[t + s] = amp * Math.exp(-s / 20) * (Math.random() * 2 - 1);
+    }
+  }
+
+  const crackSrc = _ctx.createBufferSource();
+  crackSrc.buffer = popBuf;
+  crackSrc.loop = true;
+
+  const bandpass = _ctx.createBiquadFilter();
+  bandpass.type = 'bandpass';
+  bandpass.frequency.value = 3000;
+  bandpass.Q.value = 1.5;
+
+  const crackGain = _ctx.createGain();
+  crackGain.gain.value = 0.03;
+
+  crackSrc.connect(bandpass);
+  bandpass.connect(crackGain);
+  crackGain.connect(_masterGain);
+  crackSrc.start();
+  _ambientCrackSource = crackSrc;
 }

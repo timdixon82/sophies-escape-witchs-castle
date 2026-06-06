@@ -254,4 +254,27 @@ describe('audio-manager — play() sounds', () => {
     expect(ambientSrc.loop).toBe(true);
     expect(ambientSrc.start).toHaveBeenCalled();
   });
+
+  it('init() starts two looping buffer sources — brown noise base and crackle layer', async () => {
+    const { init } = await import('./audio-manager.js');
+    init();
+    // Layer 1: brown noise (index 0); Layer 2: crackle (index 1).
+    expect(ctxStub.createBufferSource.mock.calls.length).toBeGreaterThanOrEqual(2);
+    const brownSrc = ctxStub.createBufferSource.mock.results[0].value;
+    const crackSrc = ctxStub.createBufferSource.mock.results[1].value;
+    expect(brownSrc.loop).toBe(true);
+    expect(brownSrc.start).toHaveBeenCalled();
+    expect(crackSrc.loop).toBe(true);
+    expect(crackSrc.start).toHaveBeenCalled();
+  });
+
+  it('stopAmbient() stops both the brown noise and crackle layers', async () => {
+    const { init, stopAmbient } = await import('./audio-manager.js');
+    init();
+    const brownSrc = ctxStub.createBufferSource.mock.results[0].value;
+    const crackSrc = ctxStub.createBufferSource.mock.results[1].value;
+    stopAmbient();
+    expect(brownSrc.stop).toHaveBeenCalled();
+    expect(crackSrc.stop).toHaveBeenCalled();
+  });
 });
