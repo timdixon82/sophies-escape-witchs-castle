@@ -17,6 +17,14 @@ vi.mock('three', () => {
   class Group {
     constructor() {
       this.children = [];
+      this.position = {
+        set: vi.fn(function (x, y, z) {
+          this.x = x;
+          this.y = y;
+          this.z = z;
+        }),
+      };
+      this.rotation = { x: 0, y: 0, z: 0 };
     }
     add(child) {
       this.children.push(child);
@@ -79,10 +87,10 @@ import * as THREE from 'three';
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('createSophieModel', () => {
-  it('returns an object with handsGroup and bodyGroup', () => {
+  it('returns an object with handsGroup', () => {
     const model = createSophieModel();
     expect(model).toHaveProperty('handsGroup');
-    expect(model).toHaveProperty('bodyGroup');
+    expect(model).not.toHaveProperty('bodyGroup');
   });
 
   it('handsGroup is a THREE.Group', () => {
@@ -90,63 +98,30 @@ describe('createSophieModel', () => {
     expect(handsGroup).toBeInstanceOf(THREE.Group);
   });
 
-  it('bodyGroup is a THREE.Group', () => {
-    const { bodyGroup } = createSophieModel();
-    expect(bodyGroup).toBeInstanceOf(THREE.Group);
-  });
-
-  it('handsGroup has exactly 2 children (left arm and right arm)', () => {
+  it('handsGroup has exactly 2 children (left hand group and right hand group)', () => {
     const { handsGroup } = createSophieModel();
     expect(handsGroup.children).toHaveLength(2);
   });
 
-  it('bodyGroup has exactly 6 children (body, legs x2, shoes x2, hair)', () => {
-    const { bodyGroup } = createSophieModel();
-    expect(bodyGroup.children).toHaveLength(6);
-  });
-
-  it('every child in handsGroup is a THREE.Mesh', () => {
+  it('every child in handsGroup is a THREE.Group', () => {
     const { handsGroup } = createSophieModel();
     for (const child of handsGroup.children) {
-      expect(child).toBeInstanceOf(THREE.Mesh);
+      expect(child).toBeInstanceOf(THREE.Group);
     }
   });
 
-  it('every child in bodyGroup is a THREE.Mesh', () => {
-    const { bodyGroup } = createSophieModel();
-    for (const child of bodyGroup.children) {
-      expect(child).toBeInstanceOf(THREE.Mesh);
-    }
-  });
-
-  it('bodyGroup child 0 (body/dress) material colour is blue #3a6fd8', () => {
-    const { bodyGroup } = createSophieModel();
-    const body = bodyGroup.children[0];
-    expect(body.material.color.getHex()).toBe(0x3a6fd8);
-  });
-
-  it('bodyGroup child 5 (hair) material colour is blonde #f0d060', () => {
-    const { bodyGroup } = createSophieModel();
-    const hair = bodyGroup.children[5];
-    expect(hair.material.color.getHex()).toBe(0xf0d060);
-  });
-
-  it('bodyGroup child 3 (left shoe) material colour is white #f0f0f0', () => {
-    const { bodyGroup } = createSophieModel();
-    const leftShoe = bodyGroup.children[3];
-    expect(leftShoe.material.color.getHex()).toBe(0xf0f0f0);
-  });
-
-  it('bodyGroup child 4 (right shoe) material colour is white #f0f0f0', () => {
-    const { bodyGroup } = createSophieModel();
-    const rightShoe = bodyGroup.children[4];
-    expect(rightShoe.material.color.getHex()).toBe(0xf0f0f0);
-  });
-
-  it('handsGroup arms are flesh coloured #f5c5a3', () => {
+  it('each hand group has 7 children (forearm, palm, 4 fingers, thumb)', () => {
     const { handsGroup } = createSophieModel();
-    for (const arm of handsGroup.children) {
-      expect(arm.material.color.getHex()).toBe(0xf5c5a3);
+    expect(handsGroup.children[0].children).toHaveLength(7);
+    expect(handsGroup.children[1].children).toHaveLength(7);
+  });
+
+  it('all hand parts are flesh coloured #f5c5a3', () => {
+    const { handsGroup } = createSophieModel();
+    for (const handGroup of handsGroup.children) {
+      for (const part of handGroup.children) {
+        expect(part.material.color.getHex()).toBe(0xf5c5a3);
+      }
     }
   });
 });

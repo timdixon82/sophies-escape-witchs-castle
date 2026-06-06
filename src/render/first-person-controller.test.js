@@ -45,11 +45,6 @@ vi.mock('three', () => {
 vi.mock('./player-model.js', () => ({
   createSophieModel: vi.fn(() => ({
     handsGroup: { isHandsGroup: true },
-    bodyGroup: {
-      isBodyGroup: true,
-      position: { x: 0, y: 0, z: 0 },
-      rotation: { y: 0 },
-    },
   })),
 }));
 
@@ -140,11 +135,6 @@ describe('initFirstPersonController', () => {
   it('calls camera.add with the handsGroup', () => {
     initFirstPersonController(camera, scene);
     expect(camera.add).toHaveBeenCalledWith(expect.objectContaining({ isHandsGroup: true }));
-  });
-
-  it('calls scene.add with the bodyGroup', () => {
-    initFirstPersonController(camera, scene);
-    expect(scene.add).toHaveBeenCalledWith(expect.objectContaining({ isBodyGroup: true }));
   });
 });
 
@@ -263,37 +253,4 @@ describe('disposeFirstPersonController', () => {
     disposeFirstPersonController();
   });
 
-  it('removes the bodyGroup from the scene on dispose', () => {
-    const camera = makeCamera();
-    const scene = makeScene();
-    initFirstPersonController(camera, scene);
-    disposeFirstPersonController();
-    expect(scene.remove).toHaveBeenCalledWith(expect.objectContaining({ isBodyGroup: true }));
-  });
-});
-
-describe('bodyGroup world-space sync', () => {
-  it('syncs bodyGroup position and yaw rotation each frame', () => {
-    const camera = makeCamera(1.0, 1.7, -2.0);
-    const scene = makeScene();
-    initFirstPersonController(camera, scene);
-
-    const { bodyGroup } = scene.add.mock.calls[0][0]
-      ? { bodyGroup: scene.add.mock.calls[0][0] }
-      : { bodyGroup: null };
-
-    // Move the camera and update
-    camera.position.x = 1.0;
-    camera.position.y = 1.7;
-    camera.position.z = -2.0;
-    updateFirstPersonController(0);
-
-    expect(bodyGroup.position.x).toBe(1.0);
-    expect(bodyGroup.position.y).toBe(1.7);
-    expect(bodyGroup.position.z).toBe(-2.0);
-    // yaw starts at 0
-    expect(bodyGroup.rotation.y).toBe(0);
-
-    disposeFirstPersonController();
-  });
 });
