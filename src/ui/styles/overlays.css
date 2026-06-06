@@ -250,6 +250,22 @@ dialog::backdrop {
   overflow-y: auto;
 }
 
+/* iPad range: wider sidebar so items are more readable. */
+@media (768px <= width <= 1024px) {
+  #overlay-inventory[open] {
+    width: 420px;
+  }
+}
+
+/* Small-tablet range (601px–767px): full-width sidebar. */
+@media (601px <= width <= 767px) {
+  #overlay-inventory[open] {
+    width: 100%;
+    inset: 0 0 0 auto;
+  }
+}
+
+/* Phone: bottom-sheet layout (full width, 60dvh height). */
 @media (width <= 600px) {
   #overlay-inventory[open] {
     top: auto;
@@ -267,21 +283,19 @@ dialog::backdrop {
   }
 }
 
-/* Inventory grid */
-.inventory-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-item-gap);
+/* Inventory item list — full-width vertical list.
+   Replaces the old grid layout so item names are always fully visible. */
+#overlay-inventory .item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-@media (width <= 600px) {
-  .inventory-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+#overlay-inventory .item-list li {
+  display: block;
 }
 
 .inventory-empty {
-  grid-column: 1 / -1;
   color: var(--fg-secondary);
 
   /* --fg-secondary on --bg-panel: 9.31:1 — passes AAA. */
@@ -289,16 +303,13 @@ dialog::backdrop {
   padding: 24px 0;
 }
 
-/* Inventory item card.
-   Uses <button> with aria-pressed for select toggle. */
-.inventory-item-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  aspect-ratio: 1;
-  padding: 8px;
+/* Inventory item button — full-width, tall enough for WCAG 2.5.5 AAA (44px). */
+#overlay-inventory .item-list .item-btn {
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+  white-space: normal;
+  padding: 10px 14px;
   background-color: var(--bg-panel-raised);
   color: var(--fg-primary);
 
@@ -306,27 +317,24 @@ dialog::backdrop {
   border: 2px solid transparent;
   border-radius: 4px;
   font-family: var(--font-ui);
-  font-size: var(--text-secondary-size);
+  font-size: var(--text-body-size);
   cursor: pointer;
   transition: border-color var(--transition-fade), background-color var(--transition-fade);
-  min-height: var(--space-touch-target);
 }
 
-.inventory-item-btn:hover,
-.inventory-item-btn:focus-visible {
+#overlay-inventory .item-list .item-btn:hover,
+#overlay-inventory .item-list .item-btn:focus-visible {
   border-color: var(--accent-amber);
 }
 
-/* Selected state: amber border. Visual cue for sighted users.
-   aria-pressed="true" communicates state to screen readers. */
-.inventory-item-btn[aria-pressed="true"] {
+/* Selected state: amber border. aria-pressed="true" communicates state to screen readers. */
+#overlay-inventory .item-list .item-btn[aria-pressed="true"] {
   border-color: var(--accent-amber);
   background-color: var(--bg-panel);
 }
 
 .inventory-item-name {
-  font-size: var(--text-secondary-size);
-  text-align: center;
+  font-size: var(--text-body-size);
   word-break: break-word;
 }
 
@@ -584,16 +592,56 @@ dialog::backdrop {
   margin-bottom: 8px;
 }
 
-/* Help bullet lists */
-.help-list {
-  list-style: disc;
-  padding-inline-start: 1.25em;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+/* Help reference tables (keyboard controls, touch gestures). */
+.help-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-body-size);
   color: var(--fg-primary);
 
   /* --fg-primary on --bg-panel: 14.34:1 — passes AAA. */
-  font-size: var(--text-body-size);
   line-height: var(--text-body-line-height);
+}
+
+.help-table th {
+  text-align: left;
+  font-weight: var(--text-button-weight);
+  color: var(--fg-secondary);
+
+  /* --fg-secondary on --bg-panel: 9.31:1 — passes AAA. */
+  padding: 4px 12px 4px 0;
+  border-bottom: 1px solid var(--bg-panel-raised);
+}
+
+.help-table td {
+  padding: 6px 12px 6px 0;
+  vertical-align: top;
+}
+
+.help-table tbody tr + tr td {
+  border-top: 1px solid var(--bg-panel-raised);
+}
+
+/* kbd elements inside help tables: styled as key caps. */
+.help-table kbd {
+  display: inline-block;
+  font-family: inherit;
+  font-size: 0.875em;
+  background-color: var(--bg-panel-raised);
+  color: var(--fg-primary);
+  border: 1px solid var(--fg-secondary);
+  border-radius: 3px;
+  padding: 1px 5px;
+  white-space: nowrap;
+}
+
+/* kbd elements inside HUD buttons: shortcut key badge. */
+.hud-btn kbd {
+  font-family: inherit;
+  font-size: 0.8em;
+  border: 1px solid currentcolor;
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: 4px;
+  opacity: 0.75;
 }
