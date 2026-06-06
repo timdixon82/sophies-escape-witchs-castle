@@ -34,6 +34,9 @@ let _ambientCrackSource = null;
 /** @type {GainNode | null} — gain for the ambient loop */
 let _ambientGain = null;
 
+/** @type {ReturnType<typeof setTimeout> | null} — handle for the random sound scheduler */
+let _randomSoundTimer = null;
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -113,8 +116,9 @@ export function playEventSound(_eventName) {
 /** Alias — no-op since ambient is managed internally. @param {string} _roomId */
 export function setRoomAmbient(_roomId) {}
 
-/** Stops the ambient loop (both brown noise and crackle layers). */
+/** Stops all ambient layers and cancels any pending random-sound timer. */
 export function stopAmbient() {
+  _stopRandomSounds();
   if (_ambientSource) {
     try { _ambientSource.stop(); } catch { /* already stopped */ }
     _ambientSource = null;
@@ -344,4 +348,107 @@ function _startAmbient() {
   crackGain.connect(_masterGain);
   crackSrc.start();
   _ambientCrackSource = crackSrc;
+
+  // ── Layer 3: random one-shot sounds ───────────────────────────────────────
+  _scheduleRandomSounds();
+}
+
+// ─── Private: random ambient sound scheduler ─────────────────────────────────
+
+/**
+ * Schedules the next random one-shot dungeon sound (drip, thud, or wind gust)
+ * at a random interval between 8 and 25 seconds.
+ * Reschedules itself after each firing until stopAmbient() is called.
+ */
+function _scheduleRandomSounds() {
+  if (!_ctx || !_masterGain) return;
+  const delay = (8 + Math.random() * 17) * 1000; // 8–25 seconds
+  _randomSoundTimer = setTimeout(() => {
+    if (!_ambientSource) return; // ambient stopped — do not reschedule
+    _playRandomAmbientSound(Math.floor(Math.random() * 3));
+    _scheduleRandomSounds();
+  }, delay);
+}
+
+/** Cancels the pending random-sound timer. */
+function _stopRandomSounds() {
+  if (_randomSoundTimer) {
+    clearTimeout(_randomSoundTimer);
+    _randomSoundTimer = null;
+  }
+}
+
+/**
+ * Dispatches to one of three short procedural dungeon sounds.
+ * @param {0|1|2} pick  0 = stone drip, 1 = distant thud, 2 = brief wind gust
+ */
+function _playRandomAmbientSound(pick) {
+  if (!_ctx || !_masterGain) return;
+  const sounds = [_playStoneDrip, _playDistantThud, _playWindGust];
+  sounds[pick]?.();
+}
+
+/**
+ * Stone drip: short sine burst decaying quickly, ~180–220 Hz, ~0.4 s, gain ~0.12.
+ */
+function _playStoneDrip() {
+  if (!_ctx || !_masterGain) return;
+  const osc = _ctx.createOscillator();
+  const env = _ctx.createGain();
+  osc.frequency.value = 180 + Math.random() * 40;
+  osc.type = 'sine';
+  env.gain.setValueAtTime(0.12, _ctx.currentTime);
+  env.gain.exponentialRampToValueAtTime(0.001, _ctx.currentTime + 0.4);
+  osc.connect(env);
+  env.connect(_masterGain);
+  osc.start();
+  osc.stop(_ctx.currentTime + 0.4);
+}
+
+/**
+ * Distant thud: short burst of low-passed noise, ~60 Hz, ~0.3 s, gain ~0.08.
+ */
+function _playDistantThud() {
+  if (!_ctx || !_masterGain) return;
+  const bufSize = Math.floor(_ctx.sampleRate * 0.3);
+  const thudBuf = _ctx.createBuffer(1, bufSize, _ctx.sampleRate);
+  const d = thudBuf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) {
+    d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufSize * 0.2));
+  }
+  const thudSrc = _ctx.createBufferSource();
+  thudSrc.buffer = thudBuf;
+  const lp = _ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 80;
+  const g = _ctx.createGain();
+  g.gain.value = 0.08;
+  thudSrc.connect(lp);
+  lp.connect(g);
+  g.connect(_masterGain);
+  thudSrc.start();
+}
+
+/**
+ * Brief wind gust: short burst of high-passed noise, ~1200 Hz, ~1.2 s, gain ~0.04.
+ */
+function _playWindGust() {
+  if (!_ctx || !_masterGain) return;
+  const gustSize = Math.floor(_ctx.sampleRate * 1.2);
+  const gustBuf = _ctx.createBuffer(1, gustSize, _ctx.sampleRate);
+  const gd = gustBuf.getChannelData(0);
+  for (let i = 0; i < gustSize; i++) {
+    gd[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * i / gustSize);
+  }
+  const gustSrc = _ctx.createBufferSource();
+  gustSrc.buffer = gustBuf;
+  const hp = _ctx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 1200;
+  const gg = _ctx.createGain();
+  gg.gain.value = 0.04;
+  gustSrc.connect(hp);
+  hp.connect(gg);
+  gg.connect(_masterGain);
+  gustSrc.start();
 }

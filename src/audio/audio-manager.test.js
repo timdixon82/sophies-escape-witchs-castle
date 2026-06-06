@@ -278,3 +278,79 @@ describe('audio-manager — play() sounds', () => {
     expect(crackSrc.stop).toHaveBeenCalled();
   });
 });
+
+describe('audio-manager — random ambient sounds', () => {
+  let ctxStub;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.useFakeTimers();
+
+    ctxStub = makeAudioContextStub();
+    class AudioContextMock {
+      constructor() { return ctxStub; }
+    }
+    globalThis.AudioContext = AudioContextMock;
+    delete globalThis.webkitAudioContext;
+    globalThis.localStorage = { getItem: vi.fn(() => null), setItem: vi.fn() };
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+    delete globalThis.AudioContext;
+  });
+
+  it('init() schedules a random ambient sound via setTimeout', async () => {
+    const { init } = await import('./audio-manager.js');
+    init();
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+  });
+
+  it('stopAmbient() cancels the pending random sound timer', async () => {
+    const { init, stopAmbient } = await import('./audio-manager.js');
+    init();
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    stopAmbient();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('random sound fires after 8 s when delay is at minimum and creates an audio node', async () => {
+    const { init } = await import('./audio-manager.js');
+    // Math.random() → 0 gives minimum delay (8 s) and selects stone drip (pick 0, an oscillator).
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    init();
+    const nodesBefore =
+      ctxStub.createOscillator.mock.calls.length +
+      ctxStub.createBufferSource.mock.calls.length;
+    vi.advanceTimersByTime(8100);
+    const nodesAfter =
+      ctxStub.createOscillator.mock.calls.length +
+      ctxStub.createBufferSource.mock.calls.length;
+    expect(nodesAfter).toBeGreaterThan(nodesBefore);
+  });
+
+  it('random sound reschedules itself after firing', async () => {
+    const { init } = await import('./audio-manager.js');
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    init();
+    vi.advanceTimersByTime(8100); // first timer fires at 8 s
+    // A second timer should now be pending.
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+  });
+
+  it('random sound does not fire after stopAmbient()', async () => {
+    const { init, stopAmbient } = await import('./audio-manager.js');
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    init();
+    stopAmbient();
+    const nodesBefore =
+      ctxStub.createOscillator.mock.calls.length +
+      ctxStub.createBufferSource.mock.calls.length;
+    vi.advanceTimersByTime(30000);
+    const nodesAfter =
+      ctxStub.createOscillator.mock.calls.length +
+      ctxStub.createBufferSource.mock.calls.length;
+    expect(nodesAfter).toBe(nodesBefore);
+  });
+});
