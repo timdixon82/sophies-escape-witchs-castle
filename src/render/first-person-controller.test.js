@@ -40,6 +40,12 @@ vi.mock('three', () => {
   return { Box3 };
 });
 
+// ─── Mock player model ────────────────────────────────────────────────────────
+
+vi.mock('./player-model.js', () => ({
+  createSophieModel: vi.fn(() => ({ isSophieModel: true })),
+}));
+
 // ─── Mock intent bus, keyboard bridge, touch bridge ──────────────────────────
 
 vi.mock('./input/intent-bus.js', () => ({
@@ -80,6 +86,9 @@ function makeCamera(x = 0, y = 1.7, z = 0) {
   return {
     position: { x, y, z, set: vi.fn(function(nx, ny, nz) { this.x = nx; this.y = ny; this.z = nz; }) },
     rotation: { x: 0, y: 0, z: 0 },
+    near: 0.1,
+    updateProjectionMatrix: vi.fn(),
+    add: vi.fn(),
   };
 }
 

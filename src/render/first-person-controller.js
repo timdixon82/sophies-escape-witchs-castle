@@ -26,6 +26,7 @@ import { getHeldIntents } from './input/keyboard-bridge.js';
 import { getJoystickHeld } from './input/touch-bridge.js';
 import { getCurrentRoomId } from './room-manager.js';
 import { play as playSound } from '../audio/audio-manager.js';
+import { createSophieModel } from './player-model.js';
 
 // Look sensitivity constants (degrees).
 const KEYBOARD_LOOK_SPEED_DEG = 90; // degrees per second for keyboard look
@@ -86,6 +87,19 @@ let _collidables = [];
  */
 export function initFirstPersonController(camera) {
   _camera = camera;
+
+  // Set a tighter near plane so Sophie's body geometry — parented directly to
+  // the camera — does not clip through the frustum. The default near of 0.1
+  // would cut off geometry at 0.1 m; 0.05 m gives enough headroom for the
+  // closest model parts (shoes at ~0.01 m from origin in Y) without introducing
+  // noticeable Z-fighting on distant walls.
+  _camera.near = 0.05;
+  _camera.updateProjectionMatrix();
+
+  // Attach Sophie's first-person body model to the camera so it moves and
+  // rotates with the player's viewpoint.
+  const sophieModel = createSophieModel();
+  _camera.add(sophieModel);
 
   // Respect prefers-reduced-motion (NFR-ACC-03).
   _reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
