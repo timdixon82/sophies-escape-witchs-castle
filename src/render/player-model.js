@@ -90,7 +90,7 @@ export function createSophieModel() {
   // ground level. Eye height is ~1.7 m; offsets below:
   //   y = -1.35  → 0.35 m above ground  (dress centre)
   //   y = -1.65  → 0.05 m above ground  (legs)
-  //   y = -1.85  → 0.15 m below ground  (shoes — small overshoot is fine)
+  //   y = -1.62  → 0.08 m above ground  (shoes — just below legs, visible when looking down)
   //   y = -1.0   → 0.70 m above ground  (top of head / hair)
   // z = 0 so the body is centred directly on the player position in yaw space.
 
@@ -113,12 +113,12 @@ export function createSophieModel() {
 
   // Left shoe
   const leftShoe = _makePart(new THREE.BoxGeometry(0.06, 0.04, 0.1), COLOUR_SHOE);
-  leftShoe.position.set(-0.08, -1.85, 0);
+  leftShoe.position.set(-0.08, -1.62, 0);
   bodyGroup.add(leftShoe);
 
   // Right shoe
   const rightShoe = _makePart(new THREE.BoxGeometry(0.06, 0.04, 0.1), COLOUR_SHOE);
-  rightShoe.position.set(0.08, -1.85, 0);
+  rightShoe.position.set(0.08, -1.62, 0);
   bodyGroup.add(rightShoe);
 
   // Hair — top of head, just below eye level. Mostly out of frame when looking
