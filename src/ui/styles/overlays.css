@@ -219,72 +219,38 @@ dialog::backdrop {
 
 /* ================================================================
    Inventory overlay
-   Slides in from the right on desktop (width 320px), from the bottom
-   on mobile (full width, up to 60% screen height). Respects
-   prefers-reduced-motion via --transition-panel (0s when reduced).
+   Full-screen modal, matching the pause and main-menu dialogs.
+   Inner panel fills the viewport and scrolls when items overflow.
    ================================================================ */
 
 #overlay-inventory[open] {
   position: fixed;
 
-  /* Cancel base margin: auto so the sidebar stays at the right edge.
-     inset: 0 0 0 auto sets top/right/bottom to 0 and left to auto,
-     cancelling the UA left: 0 that would otherwise override right: 0. */
+  /* Cancel base margin: auto so inset: 0 fills the full viewport.
+     width: 100% and min-height: 100dvh override the UA width: fit-content
+     so the dialog covers the full viewport as a backdrop. */
   margin: 0;
+  inset: 0;
+  width: 100%;
+  min-height: 100dvh;
   z-index: 40;
-  inset: 0 0 0 auto;
-  width: 320px;
   display: flex;
   flex-direction: column;
 }
 
 #overlay-inventory .overlay-inner {
-  height: 100%;
+  flex: 1;
 
-  /* Override base max-height: the sidebar panel fills its container height. */
-  max-height: 100%;
+  /* Override base max-height: 80vh so the panel fills the full viewport. */
+  max-height: none;
+  min-height: 100dvh;
   border-radius: 0;
-  border-right: none;
-  border-top: none;
-  border-bottom: none;
+  border: none;
   overflow-y: auto;
 }
 
-/* iPad range: wider sidebar so items are more readable. */
-@media (768px <= width <= 1024px) {
-  #overlay-inventory[open] {
-    width: 420px;
-  }
-}
-
-/* Small-tablet range (601px–767px): full-width sidebar. */
-@media (601px <= width <= 767px) {
-  #overlay-inventory[open] {
-    width: 100%;
-    inset: 0 0 0 auto;
-  }
-}
-
-/* Phone: bottom-sheet layout (full width, 60dvh height). */
-@media (width <= 600px) {
-  #overlay-inventory[open] {
-    top: auto;
-    right: 0;
-    left: 0;
-    width: 100%;
-    height: 60dvh;
-    max-height: 60dvh;
-  }
-
-  #overlay-inventory .overlay-inner {
-    border-radius: 8px 8px 0 0;
-    border: var(--border-panel);
-    border-bottom: none;
-  }
-}
-
 /* Inventory item list — full-width vertical list.
-   Replaces the old grid layout so item names are always fully visible. */
+   Each entry shows an SVG icon, bold item name, and description. */
 #overlay-inventory .item-list {
   list-style: none;
   margin: 0;
@@ -303,10 +269,14 @@ dialog::backdrop {
   padding: 24px 0;
 }
 
-/* Inventory item button — full-width, tall enough for WCAG 2.5.5 AAA (44px). */
+/* Inventory item button — full-width, tall enough for WCAG 2.5.5 AAA (44px).
+   Laid out as a flex row: icon on the left, name + description on the right. */
 #overlay-inventory .item-list .item-btn {
   width: 100%;
   min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   text-align: left;
   white-space: normal;
   padding: 10px 14px;
@@ -322,6 +292,41 @@ dialog::backdrop {
   transition: border-color var(--transition-fade), background-color var(--transition-fade);
 }
 
+/* SVG icon wrapper — fixed size, centred. */
+.item-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+}
+
+/* Item name and description stacked column. */
+.item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.item-name {
+  font-size: var(--text-body-size);
+  font-weight: bold;
+  color: var(--fg-primary);
+
+  /* --fg-primary on --bg-panel-raised: 12.89:1 — passes AAA. */
+  word-break: break-word;
+}
+
+.item-desc {
+  font-size: var(--text-secondary-size);
+  color: var(--fg-secondary);
+
+  /* --fg-secondary on --bg-panel-raised: 8.32:1 — passes AAA. */
+  margin: 0;
+  line-height: var(--text-secondary-line-height);
+}
+
 #overlay-inventory .item-list .item-btn:hover,
 #overlay-inventory .item-list .item-btn:focus-visible {
   border-color: var(--accent-amber);
@@ -333,6 +338,7 @@ dialog::backdrop {
   background-color: var(--bg-panel);
 }
 
+/* Legacy: keep selector for any remaining refs to avoid empty-rule lint errors. */
 .inventory-item-name {
   font-size: var(--text-body-size);
   word-break: break-word;
@@ -644,4 +650,48 @@ dialog::backdrop {
   padding: 0 4px;
   margin-left: 4px;
   opacity: 0.75;
+}
+
+/* ================================================================
+   Touch affordance: "Tap" badge on item labels
+   Appears only on touch devices (added via JS when ontouchstart detected).
+   aria-hidden="true" — purely visual, the label text already conveys intent.
+   ================================================================ */
+
+.tap-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  background: rgb(255 160 64 / 85%);
+  color: #1a0a00;
+
+  /* #1a0a00 on rgb(255 160 64 / 85%) — approximate 7:1 ratio, passes AAA. */
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  vertical-align: middle;
+}
+
+/* ================================================================
+   Touch affordance: first-play toast
+   Shown once on a touch device to explain tap-to-interact.
+   pointer-events: none — does not block the game canvas.
+   ================================================================ */
+
+#touch-hint-toast {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgb(0 0 0 / 85%);
+  color: #fff;
+
+  /* #fff on rgb(0 0 0 / 85%): 19.5:1 — passes AAA. */
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 1rem;
+  z-index: 9999;
+  max-width: 80vw;
+  text-align: center;
+  pointer-events: none;
 }
