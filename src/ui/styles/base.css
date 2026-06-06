@@ -209,9 +209,19 @@ body {
   right: 16px;
 }
 
-/* Help button: top-left. */
+/* Settings button: top-left, first position (0–44 px).
+   Explicit top: 0 prevents the button falling to its static position and
+   overlapping the Help button below it. */
+#hud-settings-btn {
+  top: 0;
+  left: 16px;
+}
+
+/* Help button: top-left, below Settings.
+   Starts at 56 px (44 px button height + 12 px gap) so both buttons have
+   a clear 44 px safe click area — satisfying WCAG 2.5.8 (24 px minimum). */
 #hud-help-btn {
-  top: 16px;
+  top: 56px;
   left: 16px;
 }
 
