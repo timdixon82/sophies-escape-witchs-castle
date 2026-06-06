@@ -40,6 +40,12 @@ vi.mock('three', () => {
   return { Box3 };
 });
 
+// ─── Mock player model ────────────────────────────────────────────────────────
+
+vi.mock('./player-model.js', () => ({
+  createSophieModel: vi.fn(() => ({ isSophieModel: true })),
+}));
+
 // ─── Mock intent bus, keyboard bridge, touch bridge ──────────────────────────
 
 vi.mock('./input/intent-bus.js', () => ({
@@ -80,10 +86,41 @@ function makeCamera(x = 0, y = 1.7, z = 0) {
   return {
     position: { x, y, z, set: vi.fn(function(nx, ny, nz) { this.x = nx; this.y = ny; this.z = nz; }) },
     rotation: { x: 0, y: 0, z: 0 },
+    near: 0.1,
+    updateProjectionMatrix: vi.fn(),
+    add: vi.fn(),
   };
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
+
+describe('initFirstPersonController', () => {
+  let camera;
+
+  beforeEach(() => {
+    camera = makeCamera();
+  });
+
+  afterEach(() => {
+    disposeFirstPersonController();
+  });
+
+  it('sets camera.near to 0.05', () => {
+    initFirstPersonController(camera);
+    expect(camera.near).toBe(0.05);
+  });
+
+  it('calls camera.updateProjectionMatrix after adjusting near plane', () => {
+    initFirstPersonController(camera);
+    expect(camera.updateProjectionMatrix).toHaveBeenCalled();
+  });
+
+  it('calls camera.add with the Sophie model group', () => {
+    initFirstPersonController(camera);
+    // createSophieModel is mocked to return { isSophieModel: true }
+    expect(camera.add).toHaveBeenCalledWith({ isSophieModel: true });
+  });
+});
 
 describe('resetCameraToRoomEntry', () => {
   let camera;

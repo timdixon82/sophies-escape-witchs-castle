@@ -93,6 +93,13 @@ export function initEngine(canvas) {
   // Room geometry is built by room-manager.js, not here.
   _scene = new THREE.Scene();
   _scene.background = new THREE.Color(TOKEN_BG_CANVAS);
+
+  // The camera must be a scene descendant for Three.js to render objects
+  // parented to it (e.g. the Sophie first-person model added in
+  // first-person-controller.js). Without this call, camera.add(model) attaches
+  // the model to the camera but renderer.render(scene, camera) never visits it
+  // because the camera is not in the scene graph.
+  _scene.add(_camera);
 }
 
 /**
