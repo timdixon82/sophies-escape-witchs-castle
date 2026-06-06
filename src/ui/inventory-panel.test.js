@@ -23,8 +23,8 @@ vi.mock('../core/state.js', () => ({
 
 vi.mock('../assets/room-data.js', () => ({
   ITEMS: {
-    'key-rusty': { label: 'Rusty Key' },
-    'gem-blue': { label: 'Blue Gem' },
+    'key-rusty': { label: 'Rusty Key', description: 'A rusty iron key.' },
+    'gem-blue': { label: 'Blue Gem', description: 'A polished blue gem.' },
   },
   ITEM_COMBINATIONS: [],
 }));

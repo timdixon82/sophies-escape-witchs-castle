@@ -348,6 +348,17 @@ function _startNewGame() {
   rebuildCurrentRoom();
   refreshInteractionList(_announce);
 
+  // First-play touch hint: shown once on touch devices to explain tap-to-interact.
+  if ('ontouchstart' in window && !localStorage.getItem('sewc-touch-hint-shown')) {
+    const toast = document.createElement('div');
+    toast.id = 'touch-hint-toast';
+    toast.setAttribute('role', 'status');
+    toast.textContent = 'Walk towards items and tap their name to pick them up.';
+    document.body.appendChild(toast);
+    localStorage.setItem('sewc-touch-hint-shown', '1');
+    setTimeout(() => toast.remove(), 4000);
+  }
+
   // Move focus to the canvas after layout update so VoiceOver has a clear
   // landing point after the main menu dialog closes. Deferring by one task
   // (setTimeout 0) ensures the browser has completed layout before focus() is
