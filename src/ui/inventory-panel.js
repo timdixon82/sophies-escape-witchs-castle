@@ -76,8 +76,8 @@ function _render(state) {
 
   if (items.length === 0) {
     if (emptyMsg) emptyMsg.hidden = false;
-    // Remove any existing item buttons.
-    grid.querySelectorAll('.inventory-item-btn').forEach((el) => el.remove());
+    // Remove any existing item list rows.
+    grid.querySelectorAll('li').forEach((li) => li.remove());
   } else {
     if (emptyMsg) emptyMsg.hidden = true;
     _renderItems(grid, items, selected);
@@ -95,17 +95,15 @@ function _render(state) {
  * @param {string[]} selected
  */
 function _renderItems(grid, items, selected) {
-  // Remove listitem wrappers whose item is no longer in the inventory.
-  // Each button is wrapped in a div[role=listitem]; remove the wrapper so
-  // no empty listitem shells are left in the grid.
+  // Remove <li> wrappers whose item is no longer in the inventory.
   const existingBtns = /** @type {NodeListOf<HTMLButtonElement>} */ (
-    grid.querySelectorAll('.inventory-item-btn')
+    grid.querySelectorAll('.item-btn')
   );
   const currentIds = new Set(items.map((i) => i.itemId));
   existingBtns.forEach((btn) => {
     if (!currentIds.has(btn.dataset.itemId ?? '')) {
-      // Remove the parent listitem wrapper if present, else the button itself.
-      const wrapper = btn.closest('[role="listitem"]');
+      // Remove the parent <li>, else the button itself.
+      const wrapper = btn.closest('li');
       (wrapper ?? btn).remove();
     }
   });
@@ -119,7 +117,7 @@ function _renderItems(grid, items, selected) {
     if (!btn) {
       btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'inventory-item-btn';
+      btn.className = 'item-btn';
       btn.dataset.itemId = item.itemId;
       btn.addEventListener('click', () => _onItemClick(item.itemId));
 
@@ -128,10 +126,9 @@ function _renderItems(grid, items, selected) {
       nameEl.textContent = _formatItemName(item.itemId);
       btn.appendChild(nameEl);
 
-      // Wrap the button in a listitem container so the ARIA list/listitem
-      // relationship is valid (WCAG 1.3.1, 4.1.2 — Fix 3).
-      const listItem = document.createElement('div');
-      listItem.setAttribute('role', 'listitem');
+      // Wrap in a <li> so the native ul/li list relationship is valid
+      // (WCAG 1.3.1, 4.1.2).
+      const listItem = document.createElement('li');
       listItem.appendChild(btn);
 
       // Append in collection order (items are ordered by pickedUpAt in state).
