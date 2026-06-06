@@ -1,6 +1,6 @@
 # Work folder 034: SEWC UI improvements
 
-**Status:** active
+**Status:** done
 **Triage type:** Small feature (type 7)
 **Opened:** 2026-06-06
 

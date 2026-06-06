@@ -3,7 +3,6 @@
 ## [2026-06-06] Work folder opened
 
 Tim reported: candle wick stays after pickup, spoon mesh stays after use, items in corners not interactive. Sean dispatched.
-
 ## [2026-06-06] Sean — fixes complete, PR opened
 
 Branch: `fix/sewc-mesh-and-corner-bugs`
@@ -22,3 +21,6 @@ Tests: 87 pass (10 new regression tests). Lint: 0 errors. Build: clean.
 
 Carol signed off. PR #34 merged to main with Tim's approval. Work folder closed.
 - [2026-06-06 16:53:13] subagent completed
+=======
+- [2026-06-06 16:54:15] subagent completed
+- [2026-06-06 16:56:26] subagent completed
