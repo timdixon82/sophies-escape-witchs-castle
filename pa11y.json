@@ -17,6 +17,7 @@
     "Do not add further ignore entries here without a matching record in",
     "docs/accessibility.md or a project exception under docs/exceptions/."
   ],
+  "standard": "WCAG2AAA",
   "chromeLaunchConfig": {
     "args": ["--no-sandbox", "--disable-setuid-sandbox"]
   },
