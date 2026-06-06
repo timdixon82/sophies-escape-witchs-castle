@@ -1,6 +1,6 @@
 # Work folder 033: SEWC mesh cleanup and corner interaction bugs
 
-**Status:** active
+**Status:** done
 **Triage type:** Bug fix (type 6)
 **Opened:** 2026-06-06
 
