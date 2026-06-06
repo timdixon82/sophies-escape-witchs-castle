@@ -290,7 +290,8 @@ function _handleDoor(objectId, announce, state) {
   // subscriber) guarantees the list reflects the new room's objects, not the
   // departing room's. See work folder 032 and the keynav-timing fix.
   refreshInteractionList(announce);
-  playSound('door');
+  playSound('door');      // short click on interaction
+  playSound('doorCreak'); // 1.6 s slow creak as the player passes through
   announce(`You enter the ${_roomName(targetRoomId)}.`);
 }
 

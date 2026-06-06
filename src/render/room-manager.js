@@ -568,10 +568,32 @@ function _add(obj) {
 }
 
 function _addInteractable(mesh, id, label, type) {
-  mesh.userData = { interactable: true, id, label, type };
-  _add(mesh);
-  _interactables.push(mesh);
-  return mesh;
+  // Compute geometry size in local space so the hitbox is never smaller than the mesh.
+  mesh.geometry.computeBoundingBox();
+  const bb = mesh.geometry.boundingBox;
+  const size = new THREE.Vector3();
+  bb.getSize(size);
+  const hx = Math.max(size.x, 0.14);
+  const hy = Math.max(size.y, 0.14);
+  const hz = Math.max(size.z, 0.14);
+
+  // Invisible child mesh that acts as the raycaster target.
+  // depthWrite: false prevents the hitbox from writing to the depth buffer,
+  // avoiding z-fighting with the parent geometry.
+  const hitbox = new THREE.Mesh(
+    new THREE.BoxGeometry(hx, hy, hz),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+  );
+  // The parent mesh is a companion so removeItemMesh() also removes the visible
+  // geometry when the item is picked up.
+  hitbox.userData = { interactable: true, id, label, type, companions: [mesh] };
+  mesh.add(hitbox); // hitbox lives in mesh's local space, centred at origin
+  mesh.userData = { interactable: false }; // mesh itself is not raycasted
+
+  _scene.add(mesh);
+  _interactables.push(hitbox);
+  _roomObjects.push(mesh);
+  return hitbox;
 }
 
 /**
@@ -662,8 +684,8 @@ function _makeItemCandleStub(pos) {
   const wick = new THREE.Mesh(wickGeo, wickMat);
   wick.position.set(pos[0], pos[1] + 0.075, pos[2]);
 
-  _addInteractable(wax, 'item-candle-stub', label, 'item');
-  _attachItemLabel(wax, label);
+  const candleHitbox = _addInteractable(wax, 'item-candle-stub', label, 'item');
+  _attachItemLabel(candleHitbox, label);
   _add(wick);
 
   // Tiny amber wick light.
@@ -671,8 +693,9 @@ function _makeItemCandleStub(pos) {
   wickLight.position.set(pos[0], pos[1] + 0.11, pos[2]);
   _add(wickLight);
   // companions: wick and wickLight must be removed alongside the wax body on pickup.
-  wax.userData.companions = [wick, wickLight];
-  return wax;
+  // candleHitbox.userData.companions already contains [wax]; push the decorative parts.
+  candleHitbox.userData.companions.push(wick, wickLight);
+  return candleHitbox;
 }
 
 function _makeItemMoonflowerPetal(pos) {
@@ -703,9 +726,9 @@ function _makeItemMoonflowerPetal(pos) {
   // Lay flat on the surface.
   mesh.rotation.x = Math.PI / 2;
   mesh.position.set(...pos);
-  _addInteractable(mesh, 'item-moonflower-petal', label, 'item');
-  _attachItemLabel(mesh, label);
-  return mesh;
+  const petalHitbox = _addInteractable(mesh, 'item-moonflower-petal', label, 'item');
+  _attachItemLabel(petalHitbox, label);
+  return petalHitbox;
 }
 
 function _makeItemOilSoakedRag(pos) {
@@ -717,37 +740,37 @@ function _makeItemOilSoakedRag(pos) {
   // Scale to look like a crumpled flat bundle rather than a ball.
   mesh.scale.set(1.4, 0.45, 1.0);
   mesh.position.set(...pos);
-  _addInteractable(mesh, 'item-oil-soaked-rag', label, 'item');
-  _attachItemLabel(mesh, label);
-  return mesh;
+  const ragHitbox = _addInteractable(mesh, 'item-oil-soaked-rag', label, 'item');
+  _attachItemLabel(ragHitbox, label);
+  return ragHitbox;
 }
 
 function _makeItemPinchOfSalt(pos) {
   const label = ITEMS['pinch-of-salt'].label;
   const mesh = _makeBox(0.10, 0.10, 0.10, 0xe8e8e0, pos, { roughness: 0.9 });
-  _addInteractable(mesh, 'item-pinch-of-salt', label, 'item');
-  _attachItemLabel(mesh, label);
+  const saltHitbox = _addInteractable(mesh, 'item-pinch-of-salt', label, 'item');
+  _attachItemLabel(saltHitbox, label);
   // Small near-white light to make tiny cube catch the eye
   const saltLight = new THREE.PointLight(0xf0f0e0, 0.15, 0.5, 2);
   saltLight.position.set(pos[0], pos[1], pos[2]);
   _add(saltLight);
   // companions: saltLight is purely decorative; remove it alongside the cube on pickup.
-  mesh.userData.companions = [saltLight];
-  return mesh;
+  saltHitbox.userData.companions.push(saltLight);
+  return saltHitbox;
 }
 
 function _makeItemDriedMushroom(pos) {
   const label = ITEMS['dried-mushroom'].label;
   // Stem (primary interactable)
   const stem = _makeCylinder(0.04, 0.05, 0.10, 0x8a6040, pos);
-  _addInteractable(stem, 'item-dried-mushroom', label, 'item');
-  _attachItemLabel(stem, label);
+  const mushroomHitbox = _addInteractable(stem, 'item-dried-mushroom', label, 'item');
+  _attachItemLabel(mushroomHitbox, label);
   // Cap (decorative, offset upward)
   const cap = _makeCylinder(0.14, 0.08, 0.07, 0x6b4a28, [pos[0], pos[1] + 0.085, pos[2]]);
   _add(cap);
   // companions: cap is decorative; remove it alongside the stem on pickup.
-  stem.userData.companions = [cap];
-  return stem;
+  mushroomHitbox.userData.companions.push(cap);
+  return mushroomHitbox;
 }
 
 
@@ -756,17 +779,17 @@ function _makeItemSymbolOrderScroll(pos) {
   const mesh = _makeCylinder(0.04, 0.04, 0.35, 0xe8d8a0, pos);
   mesh.material.roughness = 0.7;
   mesh.rotation.z = Math.PI / 2;
-  _addInteractable(mesh, 'item-symbol-order-scroll', label, 'item');
-  _attachItemLabel(mesh, label);
-  return mesh;
+  const scrollHitbox = _addInteractable(mesh, 'item-symbol-order-scroll', label, 'item');
+  _attachItemLabel(scrollHitbox, label);
+  return scrollHitbox;
 }
 
 function _makeItemTornSpellBookPage(pos) {
   const label = ITEMS['torn-spell-book-page'].label;
   const mesh = _makeBox(0.32, 0.012, 0.42, 0xd4c080, pos, { roughness: 0.8 });
-  _addInteractable(mesh, 'item-torn-spell-book-page', label, 'item');
-  _attachItemLabel(mesh, label);
-  return mesh;
+  const pageHitbox = _addInteractable(mesh, 'item-torn-spell-book-page', label, 'item');
+  _attachItemLabel(pageHitbox, label);
+  return pageHitbox;
 }
 
 function _makeItemArmouryChestKey(pos) {
@@ -774,8 +797,8 @@ function _makeItemArmouryChestKey(pos) {
   // Brass-toned key: shaft + bow ring + two teeth.
   const color = 0xc8902a; // warm brass
   const shaft = _makeBox(0.05, 0.05, 0.30, color, pos, { metalness: 0.7, roughness: 0.3 });
-  _addInteractable(shaft, 'item-armoury-chest-key', label, 'item');
-  _attachItemLabel(shaft, label);
+  const armouryKeyHitbox = _addInteractable(shaft, 'item-armoury-chest-key', label, 'item');
+  _attachItemLabel(armouryKeyHitbox, label);
   // Bow (ring at the grip end).
   const bowGeo = new THREE.TorusGeometry(0.055, 0.018, 8, 16);
   const bowMat = new THREE.MeshStandardMaterial({ color, metalness: 0.7, roughness: 0.3 });
@@ -788,8 +811,8 @@ function _makeItemArmouryChestKey(pos) {
   const tooth2 = _makeBox(0.05, 0.055, 0.04, color, [pos[0], pos[1] + 0.05, pos[2] + 0.12], { metalness: 0.7, roughness: 0.3 });
   _add(tooth2);
   // companions: bow, tooth1, tooth2 are decorative; remove all on pickup.
-  shaft.userData.companions = [bow, tooth1, tooth2];
-  return shaft;
+  armouryKeyHitbox.userData.companions.push(bow, tooth1, tooth2);
+  return armouryKeyHitbox;
 }
 
 function _makeItemChapelSigil(pos) {
@@ -798,17 +821,17 @@ function _makeItemChapelSigil(pos) {
   mesh.material.roughness = 0.6;
   mesh.material.emissive.setHex(TOKEN_ACCENT_PURPLE);
   mesh.material.emissiveIntensity = 0.2;
-  _addInteractable(mesh, 'item-chapel-sigil', label, 'item');
-  _attachItemLabel(mesh, label);
-  return mesh;
+  const sigilHitbox = _addInteractable(mesh, 'item-chapel-sigil', label, 'item');
+  _attachItemLabel(sigilHitbox, label);
+  return sigilHitbox;
 }
 
 function _makeItemIronGateKey(pos) {
   const label = ITEMS['iron-gate-key'].label;
   // Shaft (interactable)
   const shaft = _makeBox(0.07, 0.07, 0.32, 0x505050, pos, { metalness: 0.8, roughness: 0.4 });
-  _addInteractable(shaft, 'item-iron-gate-key', label, 'item');
-  _attachItemLabel(shaft, label);
+  const gateKeyHitbox = _addInteractable(shaft, 'item-iron-gate-key', label, 'item');
+  _attachItemLabel(gateKeyHitbox, label);
   // Bow (decorative torus)
   const bowGeo = new THREE.TorusGeometry(0.07, 0.026, 8, 16);
   const bowMat = new THREE.MeshStandardMaterial({ color: 0x505050, metalness: 0.8, roughness: 0.4, emissive: 0xffffff, emissiveIntensity: 0.0 });
@@ -816,16 +839,16 @@ function _makeItemIronGateKey(pos) {
   bow.position.set(pos[0], pos[1], pos[2] - 0.16);
   _add(bow);
   // companions: bow is decorative; remove it alongside the shaft on pickup.
-  shaft.userData.companions = [bow];
-  return shaft;
+  gateKeyHitbox.userData.companions.push(bow);
+  return gateKeyHitbox;
 }
 
 function _makeItemBrassStarChart(pos) {
   const label = ITEMS['brass-star-chart'].label;
   const mesh = _makeBox(0.28, 0.025, 0.28, 0xc09030, pos, { metalness: 0.7, roughness: 0.3, emissive: 0xffc040, emissiveIntensity: 0.15 });
-  _addInteractable(mesh, 'item-brass-star-chart', label, 'item');
-  _attachItemLabel(mesh, label);
-  return mesh;
+  const starChartHitbox = _addInteractable(mesh, 'item-brass-star-chart', label, 'item');
+  _attachItemLabel(starChartHitbox, label);
+  return starChartHitbox;
 }
 
 function _makeItemChargedBindingCrystal(pos) {
@@ -840,9 +863,9 @@ function _makeItemChargedBindingCrystal(pos) {
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.set(...pos);
-  _addInteractable(mesh, 'item-charged-binding-crystal', label, 'item');
-  _attachItemLabel(mesh, label);
-  return mesh;
+  const crystalHitbox = _addInteractable(mesh, 'item-charged-binding-crystal', label, 'item');
+  _attachItemLabel(crystalHitbox, label);
+  return crystalHitbox;
 }
 
 /**

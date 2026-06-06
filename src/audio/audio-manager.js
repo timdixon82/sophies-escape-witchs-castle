@@ -11,7 +11,7 @@
  *   - play(soundName) synthesises a short procedural sound.
  *   - Ambient pink noise runs on a separate loop and is started once.
  *
- * Sound names: footstep, pickup, door, puzzleSolve, ambient, menuOpen, menuClose
+ * Sound names: footstep, pickup, door, doorCreak, puzzleSolve, ambient, menuOpen, menuClose
  *
  * Volume is stored in localStorage under 'sewc-volume' (0–100).
  */
@@ -82,7 +82,7 @@ export function setMasterVolume(volume) {
 
 /**
  * Plays a named synthesised sound.
- * @param {'footstep'|'pickup'|'door'|'puzzleSolve'|'ambient'|'menuOpen'|'menuClose'} soundName
+ * @param {'footstep'|'pickup'|'door'|'doorCreak'|'puzzleSolve'|'ambient'|'menuOpen'|'menuClose'} soundName
  */
 export function play(soundName) {
   if (!_ctx || !_masterGain) return;
@@ -94,6 +94,7 @@ export function play(soundName) {
     case 'footstep':   _playFootstep(); break;
     case 'pickup':     _playPickup(); break;
     case 'door':       _playDoor(); break;
+    case 'doorCreak':  _playDoorCreak(); break;
     case 'puzzleSolve': _playPuzzleSolve(); break;
     case 'ambient':    _startAmbient(); break;
     case 'menuOpen':   _playMenuClick(1200); break;
@@ -214,6 +215,62 @@ function _playDoor() {
   gain.connect(_masterGain);
   osc.start(_ctx.currentTime);
   osc.stop(_ctx.currentTime + dur);
+}
+
+/**
+ * Door traversal creak: 1.6 s slow creak using two sawtooth oscillators
+ * sweeping in opposite directions through a bandpass filter at 250 Hz, Q 5,
+ * with a scraping noise layer underneath.
+ * Called after enterRoom() so it follows the initial door click.
+ */
+function _playDoorCreak() {
+  if (!_ctx || !_masterGain) return;
+  const dur = 1.6;
+  const now = _ctx.currentTime;
+
+  // Creak oscillator 1: 140 Hz → 60 Hz (slow downward sweep)
+  const osc1 = _ctx.createOscillator();
+  osc1.type = 'sawtooth';
+  osc1.frequency.setValueAtTime(140, now);
+  osc1.frequency.exponentialRampToValueAtTime(60, now + dur);
+
+  // Creak oscillator 2: 95 Hz → 130 Hz (upward sweep — harmonic scrape)
+  const osc2 = _ctx.createOscillator();
+  osc2.type = 'sawtooth';
+  osc2.frequency.setValueAtTime(95, now);
+  osc2.frequency.exponentialRampToValueAtTime(130, now + dur * 0.7);
+
+  // Scraping noise: filtered white noise burst for texture
+  const noiseBuf = _ctx.createBuffer(1, Math.floor(_ctx.sampleRate * dur), _ctx.sampleRate);
+  const nd = noiseBuf.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * 0.18;
+  const noiseSrc = _ctx.createBufferSource();
+  noiseSrc.buffer = noiseBuf;
+
+  const bandpass = _ctx.createBiquadFilter();
+  bandpass.type = 'bandpass';
+  bandpass.frequency.value = 250;
+  bandpass.Q.value = 5;
+
+  const env = _ctx.createGain();
+  env.gain.setValueAtTime(0.0, now);
+  env.gain.linearRampToValueAtTime(0.4, now + 0.05);
+  env.gain.setValueAtTime(0.4, now + dur * 0.6);
+  env.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+  const noiseGain = _ctx.createGain();
+  noiseGain.gain.value = 0.06;
+
+  osc1.connect(bandpass);
+  osc2.connect(bandpass);
+  bandpass.connect(env);
+  noiseSrc.connect(noiseGain);
+  noiseGain.connect(env);
+  env.connect(_masterGain);
+
+  osc1.start(now); osc1.stop(now + dur);
+  osc2.start(now); osc2.stop(now + dur * 0.7);
+  noiseSrc.start(now);
 }
 
 /**
