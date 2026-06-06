@@ -359,6 +359,12 @@ function _handlePuzzleTarget(targetId, announce, state) {
 
   const updatedState = getState();
   if (updatedState.puzzles[puzzleId]?.state === 'solved') {
+    // Remove 3D meshes for every item consumed by this puzzle (Bug 2: spoon mesh
+    // stays after use). The reducer already marked them consumed; here we clean
+    // up the scene geometry so no ghost objects remain.
+    for (const consumedId of puzzleDef.consumedItems) {
+      removeItemMesh(consumedId);
+    }
     playSound('puzzleSolve');
     let msg = 'Puzzle solved!';
     if (puzzleDef.producedItem) {

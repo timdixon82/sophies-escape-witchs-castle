@@ -183,7 +183,10 @@ export function removeItemMesh(itemId) {
     mesh.userData.labelEl = null;
   }
 
-  // Remove from the Three.js scene and dispose GPU resources.
+  // Remove and dispose the interactable mesh itself.
+  // When the mesh is a child of a Group (e.g. the bent-spoon handle), _scene.remove
+  // is a no-op; the parent Group is listed in mesh.userData.companions and is
+  // removed by the loop below.
   if (_scene) _scene.remove(mesh);
   if (mesh.geometry) mesh.geometry.dispose();
   if (mesh.material) {
@@ -198,6 +201,24 @@ export function removeItemMesh(itemId) {
   _interactables.splice(idx, 1);
   const roomIdx = _roomObjects.indexOf(mesh);
   if (roomIdx !== -1) _roomObjects.splice(roomIdx, 1);
+
+  // Remove companion objects (wick, lights, groups, bow, teeth, etc.) whose
+  // references are stored on the interactable mesh's userData.companions array.
+  // This removes ghost geometry that would otherwise linger in the scene after
+  // the interactable mesh is picked up.
+  for (const companion of (mesh.userData.companions ?? [])) {
+    if (_scene) _scene.remove(companion);
+    if (companion.geometry) companion.geometry.dispose();
+    if (companion.material) {
+      if (Array.isArray(companion.material)) {
+        for (const m of companion.material) m.dispose();
+      } else {
+        companion.material.dispose();
+      }
+    }
+    const ci = _roomObjects.indexOf(companion);
+    if (ci !== -1) _roomObjects.splice(ci, 1);
+  }
 }
 
 /**
@@ -619,7 +640,9 @@ function _makeItemBentSpoon(pos) {
   _roomObjects.push(group);
 
   // Make the handle the interactable target.
-  handle.userData = { interactable: true, id: 'item-bent-spoon', label, type: 'item' };
+  // companions: the group holds both handle and bowl; removing the group from the
+  // scene removes all bent-spoon geometry when the item is picked up.
+  handle.userData = { interactable: true, id: 'item-bent-spoon', label, type: 'item', companions: [group] };
   _interactables.push(handle);
   _attachItemLabel(handle, label);
   return handle;
@@ -647,6 +670,8 @@ function _makeItemCandleStub(pos) {
   const wickLight = new THREE.PointLight(0xffa040, 0.3, 0.6, 2);
   wickLight.position.set(pos[0], pos[1] + 0.11, pos[2]);
   _add(wickLight);
+  // companions: wick and wickLight must be removed alongside the wax body on pickup.
+  wax.userData.companions = [wick, wickLight];
   return wax;
 }
 
@@ -706,6 +731,8 @@ function _makeItemPinchOfSalt(pos) {
   const saltLight = new THREE.PointLight(0xf0f0e0, 0.15, 0.5, 2);
   saltLight.position.set(pos[0], pos[1], pos[2]);
   _add(saltLight);
+  // companions: saltLight is purely decorative; remove it alongside the cube on pickup.
+  mesh.userData.companions = [saltLight];
   return mesh;
 }
 
@@ -718,6 +745,8 @@ function _makeItemDriedMushroom(pos) {
   // Cap (decorative, offset upward)
   const cap = _makeCylinder(0.14, 0.08, 0.07, 0x6b4a28, [pos[0], pos[1] + 0.085, pos[2]]);
   _add(cap);
+  // companions: cap is decorative; remove it alongside the stem on pickup.
+  stem.userData.companions = [cap];
   return stem;
 }
 
@@ -754,8 +783,12 @@ function _makeItemArmouryChestKey(pos) {
   bow.position.set(pos[0], pos[1], pos[2] - 0.155);
   _add(bow);
   // Teeth: two small boxes on the blade end.
-  _add(_makeBox(0.05, 0.055, 0.06, color, [pos[0], pos[1] + 0.05, pos[2] + 0.08], { metalness: 0.7, roughness: 0.3 }));
-  _add(_makeBox(0.05, 0.055, 0.04, color, [pos[0], pos[1] + 0.05, pos[2] + 0.12], { metalness: 0.7, roughness: 0.3 }));
+  const tooth1 = _makeBox(0.05, 0.055, 0.06, color, [pos[0], pos[1] + 0.05, pos[2] + 0.08], { metalness: 0.7, roughness: 0.3 });
+  _add(tooth1);
+  const tooth2 = _makeBox(0.05, 0.055, 0.04, color, [pos[0], pos[1] + 0.05, pos[2] + 0.12], { metalness: 0.7, roughness: 0.3 });
+  _add(tooth2);
+  // companions: bow, tooth1, tooth2 are decorative; remove all on pickup.
+  shaft.userData.companions = [bow, tooth1, tooth2];
   return shaft;
 }
 
@@ -782,6 +815,8 @@ function _makeItemIronGateKey(pos) {
   const bow = new THREE.Mesh(bowGeo, bowMat);
   bow.position.set(pos[0], pos[1], pos[2] - 0.16);
   _add(bow);
+  // companions: bow is decorative; remove it alongside the shaft on pickup.
+  shaft.userData.companions = [bow];
   return shaft;
 }
 
@@ -968,7 +1003,7 @@ function _buildStoneCorridor() {
 
   // Moonflower petal in wall alcove (left wall)
   if (!state.inventory.items.some((i) => i.itemId === 'moonflower-petal')) {
-    _makeItemMoonflowerPetal([-1.9, 1.8, -3.5]);
+    _makeItemMoonflowerPetal([-1.7, 1.8, -3.5]); // moved 0.2 units from wall so raycaster can reach it
   }
 
   // Oil-soaked rag in a wall sconce
