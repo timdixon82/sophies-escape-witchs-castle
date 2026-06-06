@@ -18,6 +18,12 @@
  * (which is the only direct importer). The camera reference is
  * passed in, keeping this file free of direct THREE imports.
  * That preserves the facade pattern from ADR 002.
+ *
+ * Sophie's body model is split into two groups:
+ *   handsGroup — camera-parented; arms always visible at screen corners.
+ *   bodyGroup  — scene (world) parented; feet/legs appear when looking down.
+ * Each frame, bodyGroup.position is synced to the camera world position and
+ * bodyGroup.rotation.y is set to the current yaw so the body faces forward.
  */
 
 import * as THREE from 'three';
@@ -67,6 +73,17 @@ const FOOTSTEP_INTERVAL = 0.5;
 /** @type {import('three').PerspectiveCamera | null} */
 let _camera = null;
 
+/** @type {import('three').Scene | null} */
+let _scene = null;
+
+/**
+ * Sophie's body group in world space.
+ * Position and yaw are synced to the camera each frame so feet appear when
+ * the camera pitches down.
+ * @type {import('three').Group | null}
+ */
+let _bodyGroup = null;
+
 /** @type {MediaQueryList | null} */
 // eslint-disable-next-line no-unused-vars -- retained for v0.2: addEventListenter('change') will drive look-easing toggle
 let _reducedMotionQuery = null;
@@ -83,23 +100,29 @@ let _collidables = [];
 
 /**
  * Initialises the first-person controller.
+ *
  * @param {import('three').PerspectiveCamera} camera
+ * @param {import('three').Scene} scene  The Three.js scene. Sophie's bodyGroup
+ *   is added here so it lives in world space and responds to camera pitch.
  */
-export function initFirstPersonController(camera) {
+export function initFirstPersonController(camera, scene) {
   _camera = camera;
+  _scene = scene;
 
-  // Set a tighter near plane so Sophie's body geometry — parented directly to
+  // Set a tighter near plane so Sophie's arm geometry — parented directly to
   // the camera — does not clip through the frustum. The default near of 0.1
   // would cut off geometry at 0.1 m; 0.05 m gives enough headroom for the
-  // closest model parts (shoes at ~0.01 m from origin in Y) without introducing
-  // noticeable Z-fighting on distant walls.
+  // closest model parts without introducing noticeable Z-fighting on distant walls.
   _camera.near = 0.05;
   _camera.updateProjectionMatrix();
 
-  // Attach Sophie's first-person body model to the camera so it moves and
-  // rotates with the player's viewpoint.
-  const sophieModel = createSophieModel();
-  _camera.add(sophieModel);
+  // Split Sophie's model into two groups:
+  //   handsGroup — camera-parented; always visible at screen edges.
+  //   bodyGroup  — scene-parented; feet/legs appear when looking down.
+  const { handsGroup, bodyGroup } = createSophieModel();
+  _camera.add(handsGroup);
+  _bodyGroup = bodyGroup;
+  _scene.add(_bodyGroup);
 
   // Respect prefers-reduced-motion (NFR-ACC-03).
   _reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -117,7 +140,12 @@ export function initFirstPersonController(camera) {
 export function disposeFirstPersonController() {
   if (_lookDeltaUnsub) _lookDeltaUnsub();
   _lookDeltaUnsub = null;
+  if (_bodyGroup && _scene) {
+    _scene.remove(_bodyGroup);
+  }
   _camera = null;
+  _scene = null;
+  _bodyGroup = null;
   _collidables = [];
 }
 
@@ -234,6 +262,17 @@ export function updateFirstPersonController(deltaMs) {
   // Apply current yaw/pitch to camera.
   _camera.rotation.y = _yaw;
   _camera.rotation.x = _pitch;
+
+  // Sync bodyGroup to the camera's world position and yaw.
+  // The bodyGroup lives in scene (world) space; updating it each frame keeps
+  // it centred on the player. The pitch is intentionally NOT applied — that is
+  // what makes feet appear only when the camera pitches down.
+  if (_bodyGroup) {
+    _bodyGroup.position.x = _camera.position.x;
+    _bodyGroup.position.y = _camera.position.y;
+    _bodyGroup.position.z = _camera.position.z;
+    _bodyGroup.rotation.y = _yaw;
+  }
 }
 
 // ─── Private ─────────────────────────────────────────────────────────────────

@@ -43,7 +43,14 @@ vi.mock('three', () => {
 // ─── Mock player model ────────────────────────────────────────────────────────
 
 vi.mock('./player-model.js', () => ({
-  createSophieModel: vi.fn(() => ({ isSophieModel: true })),
+  createSophieModel: vi.fn(() => ({
+    handsGroup: { isHandsGroup: true },
+    bodyGroup: {
+      isBodyGroup: true,
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { y: 0 },
+    },
+  })),
 }));
 
 // ─── Mock intent bus, keyboard bridge, touch bridge ──────────────────────────
@@ -62,6 +69,10 @@ vi.mock('./input/touch-bridge.js', () => ({
 
 vi.mock('./room-manager.js', () => ({
   getCurrentRoomId: vi.fn(() => 'dungeon-cell'),
+}));
+
+vi.mock('../audio/audio-manager.js', () => ({
+  play: vi.fn(),
 }));
 
 // ─── Mock window.matchMedia ───────────────────────────────────────────────────
@@ -92,13 +103,24 @@ function makeCamera(x = 0, y = 1.7, z = 0) {
   };
 }
 
+// ─── Scene stub ───────────────────────────────────────────────────────────────
+
+function makeScene() {
+  return {
+    add: vi.fn(),
+    remove: vi.fn(),
+  };
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('initFirstPersonController', () => {
   let camera;
+  let scene;
 
   beforeEach(() => {
     camera = makeCamera();
+    scene = makeScene();
   });
 
   afterEach(() => {
@@ -106,28 +128,34 @@ describe('initFirstPersonController', () => {
   });
 
   it('sets camera.near to 0.05', () => {
-    initFirstPersonController(camera);
+    initFirstPersonController(camera, scene);
     expect(camera.near).toBe(0.05);
   });
 
   it('calls camera.updateProjectionMatrix after adjusting near plane', () => {
-    initFirstPersonController(camera);
+    initFirstPersonController(camera, scene);
     expect(camera.updateProjectionMatrix).toHaveBeenCalled();
   });
 
-  it('calls camera.add with the Sophie model group', () => {
-    initFirstPersonController(camera);
-    // createSophieModel is mocked to return { isSophieModel: true }
-    expect(camera.add).toHaveBeenCalledWith({ isSophieModel: true });
+  it('calls camera.add with the handsGroup', () => {
+    initFirstPersonController(camera, scene);
+    expect(camera.add).toHaveBeenCalledWith(expect.objectContaining({ isHandsGroup: true }));
+  });
+
+  it('calls scene.add with the bodyGroup', () => {
+    initFirstPersonController(camera, scene);
+    expect(scene.add).toHaveBeenCalledWith(expect.objectContaining({ isBodyGroup: true }));
   });
 });
 
 describe('resetCameraToRoomEntry', () => {
   let camera;
+  let scene;
 
   beforeEach(() => {
     camera = makeCamera(1.5, 1.7, -5.0);
-    initFirstPersonController(camera);
+    scene = makeScene();
+    initFirstPersonController(camera, scene);
   });
 
   afterEach(() => {
@@ -166,10 +194,12 @@ describe('resetCameraToRoomEntry', () => {
 
 describe('setCollidableMeshes', () => {
   let camera;
+  let scene;
 
   beforeEach(() => {
     camera = makeCamera();
-    initFirstPersonController(camera);
+    scene = makeScene();
+    initFirstPersonController(camera, scene);
   });
 
   afterEach(() => {
@@ -189,10 +219,12 @@ describe('setCollidableMeshes', () => {
 
 describe('collision resolution', () => {
   let camera;
+  let scene;
 
   beforeEach(() => {
     camera = makeCamera(0, 1.7, 0);
-    initFirstPersonController(camera);
+    scene = makeScene();
+    initFirstPersonController(camera, scene);
   });
 
   afterEach(() => {
@@ -220,13 +252,48 @@ describe('disposeFirstPersonController', () => {
 
   it('clears collidables on dispose', () => {
     const camera = makeCamera();
-    initFirstPersonController(camera);
+    const scene = makeScene();
+    initFirstPersonController(camera, scene);
     setCollidableMeshes([{}]);
     disposeFirstPersonController();
     // After dispose, the controller should have no collidables.
     // Verify by re-initialising and confirming no mesh data bleeds through.
-    initFirstPersonController(camera);
+    initFirstPersonController(camera, scene);
     expect(() => updateFirstPersonController(16)).not.toThrow();
+    disposeFirstPersonController();
+  });
+
+  it('removes the bodyGroup from the scene on dispose', () => {
+    const camera = makeCamera();
+    const scene = makeScene();
+    initFirstPersonController(camera, scene);
+    disposeFirstPersonController();
+    expect(scene.remove).toHaveBeenCalledWith(expect.objectContaining({ isBodyGroup: true }));
+  });
+});
+
+describe('bodyGroup world-space sync', () => {
+  it('syncs bodyGroup position and yaw rotation each frame', () => {
+    const camera = makeCamera(1.0, 1.7, -2.0);
+    const scene = makeScene();
+    initFirstPersonController(camera, scene);
+
+    const { bodyGroup } = scene.add.mock.calls[0][0]
+      ? { bodyGroup: scene.add.mock.calls[0][0] }
+      : { bodyGroup: null };
+
+    // Move the camera and update
+    camera.position.x = 1.0;
+    camera.position.y = 1.7;
+    camera.position.z = -2.0;
+    updateFirstPersonController(0);
+
+    expect(bodyGroup.position.x).toBe(1.0);
+    expect(bodyGroup.position.y).toBe(1.7);
+    expect(bodyGroup.position.z).toBe(-2.0);
+    // yaw starts at 0
+    expect(bodyGroup.rotation.y).toBe(0);
+
     disposeFirstPersonController();
   });
 });
