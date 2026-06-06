@@ -237,7 +237,7 @@ async function boot() {
 
   // 12. Start the render loop (runs even at main menu to keep canvas alive).
   const camera = getCamera();
-  if (camera) initFirstPersonController(camera);
+  if (camera) initFirstPersonController(camera, scene);
   _logStep('starting render loop');
   startLoop(_gameLoop);
   _logStep('render loop started — first frame drawn');
