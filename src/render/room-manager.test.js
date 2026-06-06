@@ -254,6 +254,56 @@ describe('removeItemMesh', () => {
   });
 });
 
+// ─── removeItemMesh: companion object cleanup ─────────────────────────────────
+//
+// Regression: multi-mesh items (candle stub, bent spoon, etc.) are built from
+// several Three.js objects (meshes, lights, groups). Before the fix, only the
+// interactable mesh was removed; companion objects tagged with itemGroupId were
+// left in the scene and _roomObjects, causing ghost geometry after pickup.
+//
+
+describe('removeItemMesh: companion object cleanup', () => {
+  let scene;
+  let removeSpy;
+
+  beforeEach(() => {
+    _installDomStubs();
+    scene = new THREE.Scene();
+    removeSpy = vi.spyOn(scene, 'remove');
+    initRoomManager(scene);
+    enterRoom('kitchen');
+    enterRoom('dungeon-cell');
+    removeSpy.mockClear(); // discard remove calls from room setup
+  });
+
+  it('removes wick and point-light companions from scene when candle-stub is picked up', () => {
+    // candle-stub: wax (interactable) + wick (companion) + wickLight (companion).
+    // Expect scene.remove called 3 times: once for wax, once for wick, once for wickLight.
+    removeItemMesh('candle-stub');
+    expect(removeSpy).toHaveBeenCalledTimes(3);
+  });
+
+  it('removes the spoon group from scene when bent-spoon is picked up', () => {
+    // bent-spoon: handle (interactable, inside group) + group (companion holding handle+bowl).
+    // scene.remove(handle) is still called even though it is a no-op in real Three.js.
+    // scene.remove(group) is called by the companion scan.
+    // Expect exactly 2 remove calls.
+    removeItemMesh('bent-spoon');
+    expect(removeSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('removes only the targeted item companions, not those of other items', () => {
+    // Removing bent-spoon must not affect candle-stub companions.
+    removeItemMesh('bent-spoon');
+    removeSpy.mockClear();
+
+    // candle-stub is still present; its companions (wick + wickLight) should
+    // still be removable independently.
+    removeItemMesh('candle-stub');
+    expect(removeSpy).toHaveBeenCalledTimes(3);
+  });
+});
+
 // ─── rebuildCurrentRoom label teardown regression ─────────────────────────────
 //
 // Regression: _tearDownRoom() only iterated _roomObjects when removing label

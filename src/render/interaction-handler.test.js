@@ -99,6 +99,11 @@ import {
   removeInteractionHandler,
 } from './interaction-handler.js';
 
+// Import the mocked room-data module so tests can add puzzle definitions.
+// These are the same mock objects the interaction handler module receives,
+// so mutations in tests are visible to the handler at call time.
+import { PUZZLE_DEFINITIONS, ITEMS } from '../assets/room-data.js';
+
 // ─── DOM helpers ─────────────────────────────────────────────────────────────
 
 function _makeButton() {
@@ -253,5 +258,133 @@ describe('_handleDoor: keyboard nav list timing', () => {
 
     expect(_navListEl.children).toHaveLength(1);
     expect(_navListEl.children[0].querySelector('button').textContent).toBe('Wall Torch');
+  });
+});
+
+// ─── _handlePuzzleTarget: consumed item mesh cleanup ─────────────────────────
+//
+// Regression: before the fix, solving a puzzle via USE_ITEM_ON_TARGET only
+// updated the reducer state; it did not call removeItemMesh for consumed items.
+// Multi-mesh items (e.g. the spoon group) could remain in the scene after being
+// consumed by a puzzle, even if their pickup mesh was already removed.
+// The fix: after confirming puzzle solved, call removeItemMesh for each item in
+// puzzleDef.consumedItems.
+//
+
+describe('_handlePuzzleTarget: consumed item mesh cleanup', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    _installDomStubs();
+
+    // Add a puzzle definition to the shared mock object. The interaction
+    // handler imports the same object reference, so mutations are visible.
+    PUZZLE_DEFINITIONS['kitchen-cauldron'] = {
+      requiredItems: ['moonflower-petal', 'pinch-of-salt', 'dried-mushroom'],
+      consumedItems: ['moonflower-petal', 'pinch-of-salt', 'dried-mushroom'],
+      producedItem: null,
+      target: 'kitchen-cauldron',
+      prerequisitePuzzles: [],
+    };
+    ITEMS['moonflower-petal'] = { label: 'Moonflower petal' };
+    ITEMS['pinch-of-salt']    = { label: 'Pinch of salt' };
+    ITEMS['dried-mushroom']   = { label: 'Dried mushroom' };
+  });
+
+  afterEach(() => {
+    removeInteractionHandler();
+    delete PUZZLE_DEFINITIONS['kitchen-cauldron'];
+    delete ITEMS['moonflower-petal'];
+    delete ITEMS['pinch-of-salt'];
+    delete ITEMS['dried-mushroom'];
+  });
+
+  it('calls removeItemMesh for each consumed item when the puzzle is solved', () => {
+    // Arrange ─────────────────────────────────────────────────────────────────
+    //
+    // Puzzle mesh whose id matches the puzzle definition's target.
+    const cauldronMesh = {
+      userData: {
+        id: 'kitchen-cauldron',
+        type: 'puzzle',
+        label: 'Cauldron',
+        interactable: true,
+      },
+    };
+
+    _mockGetInteractables.mockReturnValue([cauldronMesh]);
+
+    // First getState call (in _handleInteractable): game playing with selected item.
+    // Subsequent calls (in _handlePuzzleTarget after dispatch): puzzle solved.
+    _mockGetState
+      .mockReturnValueOnce({
+        gameStatus: 'playing',
+        openOverlays: [],
+        inventory: {
+          items: [
+            { itemId: 'moonflower-petal', consumed: false },
+            { itemId: 'pinch-of-salt',    consumed: false },
+            { itemId: 'dried-mushroom',   consumed: false },
+          ],
+          selectedItemIds: ['moonflower-petal'],
+        },
+        puzzles: {},
+      })
+      .mockReturnValue({
+        gameStatus: 'playing',
+        openOverlays: [],
+        inventory: {
+          items: [
+            { itemId: 'moonflower-petal', consumed: true },
+            { itemId: 'pinch-of-salt',    consumed: true },
+            { itemId: 'dried-mushroom',   consumed: true },
+          ],
+          selectedItemIds: [],
+        },
+        puzzles: { 'kitchen-cauldron': { state: 'solved' } },
+      });
+
+    const announce = vi.fn();
+    installInteractionHandler(announce);
+
+    // Act ──────────────────────────────────────────────────────────────────────
+    _navListEl.children[0].querySelector('button')._trigger('click');
+
+    // Assert ───────────────────────────────────────────────────────────────────
+    // removeItemMesh must be called for every consumed item.
+    expect(_mockRemoveItemMesh).toHaveBeenCalledWith('moonflower-petal');
+    expect(_mockRemoveItemMesh).toHaveBeenCalledWith('pinch-of-salt');
+    expect(_mockRemoveItemMesh).toHaveBeenCalledWith('dried-mushroom');
+  });
+
+  it('does not call removeItemMesh when the puzzle is not yet solved', () => {
+    // Arrange ─────────────────────────────────────────────────────────────────
+    const cauldronMesh = {
+      userData: {
+        id: 'kitchen-cauldron',
+        type: 'puzzle',
+        label: 'Cauldron',
+        interactable: true,
+      },
+    };
+
+    _mockGetInteractables.mockReturnValue([cauldronMesh]);
+
+    // Wrong item selected — the reducer will record an attempt but not solve.
+    _mockGetState.mockReturnValue({
+      gameStatus: 'playing',
+      openOverlays: [],
+      inventory: {
+        items: [{ itemId: 'bent-spoon', consumed: false }],
+        selectedItemIds: ['bent-spoon'],
+      },
+      puzzles: {},
+    });
+
+    const announce = vi.fn();
+    installInteractionHandler(announce);
+
+    _navListEl.children[0].querySelector('button')._trigger('click');
+
+    expect(_mockRemoveItemMesh).not.toHaveBeenCalled();
   });
 });
