@@ -56,7 +56,7 @@ try {
 const swVersionPlugin = {
   name: 'sw-version',
   writeBundle(options) {
-    const swFile = path.join(options.dir, 'sw.js');
+    const swFile = path.join(options.dir, 'sw.js'); // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
     if (fs.existsSync(swFile)) {
       let content = fs.readFileSync(swFile, 'utf8');
       content = content.replace(
