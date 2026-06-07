@@ -1,6 +1,6 @@
 # Work folder 042: SEWC minimum hitboxes on all items, door creak sound
 
-**Status:** active
+**Status:** done
 **Triage type:** Bug fix (type 6)
 **Opened:** 2026-06-06
 

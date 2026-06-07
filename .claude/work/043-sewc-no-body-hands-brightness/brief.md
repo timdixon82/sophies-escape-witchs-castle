@@ -1,6 +1,6 @@
 # Work folder 043: Remove lower body, realistic hands, extended brightness
 
-**Status:** active
+**Status:** done
 **Triage type:** Small feature (type 7)
 **Opened:** 2026-06-06
 
