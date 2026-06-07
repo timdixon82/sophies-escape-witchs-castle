@@ -255,6 +255,23 @@ describe('audio-manager — play() sounds', () => {
     expect(ambientSrc.start).toHaveBeenCalled();
   });
 
+  it('play("doorCreak") creates two oscillators and a buffer source for the scrape noise', async () => {
+    // _playDoorCreak() uses osc1 (sawtooth downward), osc2 (sawtooth upward), and a
+    // white-noise buffer source. Verify all three audio nodes are created and started.
+    const { init, play } = await import('./audio-manager.js');
+    init();
+    const oscBefore = ctxStub.createOscillator.mock.calls.length;
+    const srcBefore = ctxStub.createBufferSource.mock.calls.length;
+    play('doorCreak');
+    expect(ctxStub.createOscillator.mock.calls.length - oscBefore).toBe(2);
+    expect(ctxStub.createBufferSource.mock.calls.length - srcBefore).toBe(1);
+    // Both oscillators must be started.
+    const osc1 = ctxStub.createOscillator.mock.results[oscBefore].value;
+    const osc2 = ctxStub.createOscillator.mock.results[oscBefore + 1].value;
+    expect(osc1.start).toHaveBeenCalled();
+    expect(osc2.start).toHaveBeenCalled();
+  });
+
   it('init() starts two looping buffer sources — brown noise base and crackle layer', async () => {
     const { init } = await import('./audio-manager.js');
     init();

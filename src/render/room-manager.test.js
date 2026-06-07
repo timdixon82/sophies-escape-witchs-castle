@@ -25,7 +25,15 @@ vi.mock('three', () => {
     roughness: 0.8,
     metalness: 0,
   });
-  const makeGeometry = () => ({ dispose: vi.fn() });
+  // Geometry mock includes the computeBoundingBox / getSize surface that
+  // _addInteractable() calls to derive the minimum hitbox dimensions.
+  const makeGeometry = () => ({
+    dispose: vi.fn(),
+    computeBoundingBox: vi.fn(),
+    boundingBox: {
+      getSize: vi.fn((v) => { v.x = 0; v.y = 0; v.z = 0; return v; }),
+    },
+  });
 
   class Scene {
     constructor() { this.fog = null; this.background = null; }
@@ -42,6 +50,8 @@ vi.mock('three', () => {
       this.rotation = { set: vi.fn(), z: 0, x: 0 };
       this.scale = { set: vi.fn() };
     }
+    // Required by _addInteractable() so the hitbox can be parented to the mesh.
+    add() {}
   }
 
   class Group {
@@ -54,6 +64,8 @@ vi.mock('three', () => {
   }
 
   class Vector2 { constructor() {} }
+  // Vector3 is used by _addInteractable() to receive the result of boundingBox.getSize().
+  class Vector3 { constructor() { this.x = 0; this.y = 0; this.z = 0; } }
   class Color { constructor() {} }
   class PlaneGeometry { constructor() { return makeGeometry(); } }
   class BoxGeometry { constructor() { return makeGeometry(); } }
@@ -87,7 +99,7 @@ vi.mock('three', () => {
   const DoubleSide = 2;
 
   return {
-    Scene, Mesh, Group, Vector2, Color,
+    Scene, Mesh, Group, Vector2, Vector3, Color,
     PlaneGeometry, BoxGeometry, CylinderGeometry, SphereGeometry, TorusGeometry, LatheGeometry,
     MeshStandardMaterial, MeshBasicMaterial, AmbientLight, PointLight, DirectionalLight, FogExp2,
     Box3, DoubleSide,
@@ -278,10 +290,10 @@ describe('removeItemMesh: companion object cleanup', () => {
   });
 
   it('removes wick and point-light companions from scene when candle-stub is picked up', () => {
-    // candle-stub: wax (interactable) + wick (companion) + wickLight (companion).
-    // Expect scene.remove called 3 times: once for wax, once for wick, once for wickLight.
+    // candle-stub: hitbox (interactable, child of wax) + wax + wick + wickLight (companions).
+    // scene.remove calls: hitbox (1), wax (2), wick (3), wickLight (4).
     removeItemMesh('candle-stub');
-    expect(removeSpy).toHaveBeenCalledTimes(3);
+    expect(removeSpy).toHaveBeenCalledTimes(4);
   });
 
   it('removes the spoon group from scene when bent-spoon is picked up', () => {
@@ -297,10 +309,47 @@ describe('removeItemMesh: companion object cleanup', () => {
     removeItemMesh('bent-spoon');
     removeSpy.mockClear();
 
-    // candle-stub is still present; its companions (wick + wickLight) should
-    // still be removable independently.
+    // candle-stub is still present; its companions (hitbox + wax + wick + wickLight)
+    // should still be removable independently.
     removeItemMesh('candle-stub');
-    expect(removeSpy).toHaveBeenCalledTimes(3);
+    expect(removeSpy).toHaveBeenCalledTimes(4);
+  });
+});
+
+// ─── _addInteractable: minimum hitbox ────────────────────────────────────────
+//
+// Items registered via _addInteractable must have a transparent BoxGeometry
+// child hitbox in _interactables rather than the raw mesh. The hitbox ensures
+// a minimum 0.30 m target size so small items (keys, petals) are easy to pick
+// up via raycasting on both mouse and touch devices.
+//
+
+describe('_addInteractable: minimum hitbox', () => {
+  beforeEach(() => {
+    _installDomStubs();
+    initRoomManager(new THREE.Scene());
+    enterRoom('kitchen');
+    enterRoom('dungeon-cell');
+  });
+
+  it('candle-stub interactable has interactable: true on its userData', () => {
+    const hitbox = getInteractables().find((m) => m.userData.id === 'item-candle-stub');
+    expect(hitbox).toBeDefined();
+    expect(hitbox.userData.interactable).toBe(true);
+  });
+
+  it('candle-stub interactable has the parent mesh (wax) as a companion', () => {
+    const hitbox = getInteractables().find((m) => m.userData.id === 'item-candle-stub');
+    expect(hitbox.userData.companions).toBeDefined();
+    // companions[0] is the parent wax mesh; it has interactable: false
+    expect(hitbox.userData.companions[0].userData.interactable).toBe(false);
+  });
+
+  it('candle-stub raw wax mesh is not itself in _interactables', () => {
+    const hitbox = getInteractables().find((m) => m.userData.id === 'item-candle-stub');
+    const wax = hitbox.userData.companions[0];
+    // The raw mesh should NOT appear in the interactables list.
+    expect(getInteractables().includes(wax)).toBe(false);
   });
 });
 
@@ -320,8 +369,8 @@ describe('rebuildCurrentRoom', () => {
   });
 
   it('removes label DOM elements attached to interactable meshes during teardown', () => {
-    // Find the bent-spoon handle, which holds userData.labelEl but whose Group
-    // (not the handle itself) is registered in _roomObjects. This is the exact
+    // Find the bent-spoon hitbox, which holds userData.labelEl but whose Group
+    // (not the hitbox itself) is registered in _roomObjects. This is the exact
     // path that was orphaning labels before the fix.
     const spoonMesh = getInteractables().find((m) => m.userData.id === 'item-bent-spoon');
     expect(spoonMesh).toBeDefined();

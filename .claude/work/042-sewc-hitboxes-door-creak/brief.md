@@ -10,7 +10,7 @@ Many items have very small raycaster targets (e.g. keys use a thin shaft cylinde
 
 ### Fix: modify `_addInteractable()` in `src/render/room-manager.js`
 
-Add an invisible minimum-size hitbox child to every mesh registered through `_addInteractable`. The hitbox becomes the raycaster target instead of the raw mesh. Minimum hitbox size: 0.14 m on each axis (but not smaller than the geometry itself).
+Add an invisible minimum-size hitbox child to every mesh registered through `_addInteractable`. The hitbox becomes the raycaster target instead of the raw mesh. Minimum hitbox size: 0.30 m on each axis (but not smaller than the geometry itself).
 
 ```js
 function _addInteractable(mesh, id, label, type) {
@@ -19,9 +19,9 @@ function _addInteractable(mesh, id, label, type) {
   const bb = mesh.geometry.boundingBox;
   const size = new THREE.Vector3();
   bb.getSize(size);
-  const hx = Math.max(size.x, 0.14);
-  const hy = Math.max(size.y, 0.14);
-  const hz = Math.max(size.z, 0.14);
+  const hx = Math.max(size.x, 0.30);
+  const hy = Math.max(size.y, 0.30);
+  const hz = Math.max(size.z, 0.30);
 
   const hitbox = new THREE.Mesh(
     new THREE.BoxGeometry(hx, hy, hz),
@@ -36,7 +36,7 @@ function _addInteractable(mesh, id, label, type) {
 }
 ```
 
-**Important:** the existing puzzle targets (cauldron, cabinet, chest, altar, telescope, cast button, gate pedestal) also go through `_addInteractable`. Their geometry is already large, so `Math.max(size, 0.14)` will just use the actual geometry size. No visual change for those.
+**Important:** the existing puzzle targets (cauldron, cabinet, chest, altar, telescope, cast button, gate pedestal) also go through `_addInteractable`. Their geometry is already large, so `Math.max(size, 0.30)` will just use the actual geometry size. No visual change for those.
 
 **Note:** work folder 040 already adds a custom hitbox for `_makeItemBentSpoon` directly. That spoon-specific hitbox should be kept as-is; it does not go through `_addInteractable`. No conflict.
 
@@ -119,7 +119,7 @@ Low. Targeted changes to `_addInteractable` and the audio manager. Rollback: rev
 
 ## Definition of done
 
-- All items registered via `_addInteractable` have a minimum 0.14 m hitbox
+- All items registered via `_addInteractable` have a minimum 0.30 m hitbox
 - Door creak plays (1.6 s) when the player traverses any door
 - All existing tests pass
 - Lint: 0 errors
