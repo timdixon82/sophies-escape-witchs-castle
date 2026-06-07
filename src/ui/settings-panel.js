@@ -3,7 +3,7 @@
  *
  * Manages user preferences for:
  *   - Show item labels (checkbox)       localStorage: sewc-item-labels
- *   - Brightness (slider 0.2–2.0)       localStorage: sewc-brightness
+ *   - Brightness (slider 0.2–4.0)       localStorage: sewc-brightness
  *   - Volume (slider 0–100)             localStorage: sewc-volume
  *   - Read aloud / speech (checkbox)    localStorage: sewc-speech
  *   - Show captions (checkbox)          localStorage: sewc-captions
@@ -44,7 +44,7 @@ export function mountSettingsPanel() {
   _wire('settings-item-labels-checkbox', 'change', _onLabelsToggle);
 
   // Brightness slider.
-  const brightness = _readFloat(STORAGE_BRIGHTNESS, 0.8, 0.2, 2.0);
+  const brightness = _readFloat(STORAGE_BRIGHTNESS, 0.8, 0.2, 4.0);
   _syncSlider('settings-brightness-slider', brightness);
   _syncOutput('settings-brightness-output', brightness.toFixed(1));
   applyBrightness(brightness);
