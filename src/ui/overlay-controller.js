@@ -154,7 +154,7 @@ function _open(overlayId, triggerElementId) {
     if (typeof dialog.showModal === 'function') {
       try {
         dialog.showModal();
-      } catch (err) {
+      } catch {
         // showModal can throw if the element is not connected or is already
         // in the top layer. Fall through to the attribute fallback.
         dialog.setAttribute('open', '');
