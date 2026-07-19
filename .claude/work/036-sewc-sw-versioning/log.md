@@ -24,3 +24,9 @@ Awaiting Tim's merge approval.
 - [2026-06-06 17:46:30] subagent completed
 - [2026-06-06 17:50:01] subagent completed
 - [2026-06-06 17:50:07] subagent completed
+
+## [2026-07-19] Housekeeping — folder closed
+
+PR #35 was confirmed merged on GitHub, but this folder was left at
+Status: active with its git worktree still checked out. Removed the
+stale worktree and set Status: done. No further action needed.

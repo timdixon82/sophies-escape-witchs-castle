@@ -1,6 +1,6 @@
 # Work folder 036: SEWC service worker auto-versioning
 
-**Status:** active
+**Status:** done
 **Triage type:** Bug fix (type 6)
 **Opened:** 2026-06-06
 

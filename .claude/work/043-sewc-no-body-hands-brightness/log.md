@@ -6,3 +6,7 @@ Tim requests: remove lower body/feet from view; make hands more realistic (palm 
 - Sean completed: branch fix/sewc-no-body-hands-brightness pushed, PR #43 opened: https://github.com/timdixon82/sophies-escape-witchs-castle/pull/43
 - Changes: bodyGroup removed from player-model.js and first-person-controller.js; handsGroup replaced with 7-part hand groups (forearm + palm + 4 fingers + thumb per hand); brightness slider max extended to 4.0× in index.html and settings-panel.js
 - PR #43 merged to main (squash). Status: done.
+- [2026-06-07 02:45:17] subagent completed
+- [2026-06-07 08:12:49] subagent completed
+- [2026-06-08 09:40:17] subagent completed
+- [2026-06-08 10:04:31] subagent completed
