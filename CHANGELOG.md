@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.6.0](https://github.com/timdixon82/sophies-escape-witchs-castle/compare/v0.5.0...v0.6.0) (2026-07-14)
+
+
+### Features
+
+* **audio:** candle/fire ambient with random dungeon sound scheduler ([#40](https://github.com/timdixon82/sophies-escape-witchs-castle/issues/40)) ([976d4d6](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/976d4d6bad366f64b593a8c4158d11423c94ca63))
+* full-screen inventory with icons, spoon fixes, iPad tap affordance, semgrep fix ([#41](https://github.com/timdixon82/sophies-escape-witchs-castle/issues/41)) ([bf0b738](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/bf0b73803670296c0566205b3188f0cea651d1d7))
+* **player:** add first-person Sophie player model ([#36](https://github.com/timdixon82/sophies-escape-witchs-castle/issues/36)) ([6336e44](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/6336e44db0ac7406d466a21193a2c408229df942))
+* **ui:** inventory list layout, help panel, iPad width, HUD keyboard shortcuts ([#33](https://github.com/timdixon82/sophies-escape-witchs-castle/issues/33)) ([f4520da](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/f4520da83d4e2809909d4d4db9afc4018156c718))
+* **ux:** brightness, item-use mechanic, audio system, speech synthesis, captions ([ac6b4f9](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/ac6b4f945e193577860084b28e74af6f748fe3b8))
+* **ux:** collision fixes, brightness, item-use mechanic, audio, speech, captions ([803df85](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/803df8552e718904793e57a388d17603bc7ec135))
+
+
+### Bug Fixes
+
+* add dependabot cooldown block to satisfy semgrep dependabot-missing-cooldown rule ([#51](https://github.com/timdixon82/sophies-escape-witchs-castle/issues/51)) ([4b6b9de](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/4b6b9de37827f499e4688c1c6d727dc25a567783))
+* **build:** inject git hash into SW VERSION on each build ([#35](https://github.com/timdixon82/sophies-escape-witchs-castle/issues/35)) ([48bb55d](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/48bb55dde4d0e613ef2618322339576cf855e14b))
+* **css:** cancel margin: auto on position-fixed dialogs to restore layout ([ee4f0a1](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/ee4f0a18068778ad5a5165b8dc717f200b041c46))
+* **css:** right-pin inventory sidebar and fill-viewport pause/main-menu dialogs ([f621a3f](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/f621a3f719249c2d93f617daa6149e5ce717b643))
+* **gameplay:** collision, item graphics, look range, labels setting, door routing ([3c98190](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/3c981905a1dbf5a497341e0a41f34a5944a7cf46))
+* **gameplay:** collision, item graphics, look range, labels setting, door routing ([00a8548](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/00a85488726d371298c278a576faf731b0bf32d1))
+* minimum 30 cm hitboxes on all items, door creak on traversal ([#42](https://github.com/timdixon82/sophies-escape-witchs-castle/issues/42)) ([2453ed6](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/2453ed6531c8b9f80c333c2f5fd36ce6c7395373))
+* pa11y WCAG2AAA standard, HUD button spacing, favicon ([#37](https://github.com/timdixon82/sophies-escape-witchs-castle/issues/37)) ([e790a35](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/e790a3528a995a9fb27d09d50982cd7dc28d5c75))
+* **player:** raise shoe geometry above floor surface ([#39](https://github.com/timdixon82/sophies-escape-witchs-castle/issues/39)) ([ec4455a](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/ec4455ad57c065edc572ac988d1c6346729e9236))
+* **player:** remove lower body, realistic hands, brightness max 4.0x ([#43](https://github.com/timdixon82/sophies-escape-witchs-castle/issues/43)) ([c5723d0](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/c5723d01427d868585eccfab8fce235c210f2dd4))
+* **player:** show feet on look-down only, hands at screen edges ([#38](https://github.com/timdixon82/sophies-escape-witchs-castle/issues/38)) ([50892d2](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/50892d245547757896bb12b2d654790fd7114acd))
+* **render:** place Stone Corridor doors against walls and spawn player at entry door ([3514bfb](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/3514bfb834c5b99c414f5ea0cac632e831924d1d))
+* **render:** remove full item group on pickup, raycaster targets interactables only ([2fc437b](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/2fc437b300276f3d60430683b7f0c303398b695c))
+* **render:** remove full item group on pickup, raycaster targets interactables only ([882a145](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/882a145de5e5cb933d2ef4acb177da6bec32a74e))
+* **render:** Stone Corridor doors against walls, entry spawn position ([e40817a](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/e40817a19d77d9dc28ea51109537ad7527b6988d))
+* **room-manager:** remove interactable labelEls on teardown to prevent DOM orphans ([2d66ae8](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/2d66ae8788c0b24baacd370b34671444d356a331))
+* **ui:** centre dialogs and add overflow scrollbar ([2371bd3](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/2371bd3ee1b2270be7c49475f78e682559f6a90d))
+* **ui:** centre dialogs on screen and add overflow scrollbar ([04b5d65](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/04b5d65622b0dcf1a7a46ddc39051046e775f7ed))
+* **ui:** keyboard nav list shows new room items after door transition ([d5e0dbb](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/d5e0dbb4ac13edeace86d3ae6b970e1ba6d002a8))
+* **ui:** refresh keyboard nav list after enterRoom completes ([bb43da6](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/bb43da6a59e9c813c92467ede935f1f495869a6b))
+
 ## [0.5.0](https://github.com/timdixon82/sophies-escape-witchs-castle/compare/v0.4.0...v0.5.0) (2026-06-05)
 
 

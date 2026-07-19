@@ -84,7 +84,7 @@ async function _cacheFirst(request, cacheName) {
       cache.put(request, response.clone());
     }
     return response;
-  } catch (err) {
+  } catch {
     // Network failed and nothing in cache.
     return new Response('Offline', { status: 503 });
   }
