@@ -315,7 +315,7 @@ dialog::backdrop {
   color: var(--fg-primary);
 
   /* --fg-primary on --bg-panel-raised: 12.89:1 — passes AAA. */
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .item-desc {
@@ -341,7 +341,7 @@ dialog::backdrop {
 /* Legacy: keep selector for any remaining refs to avoid empty-rule lint errors. */
 .inventory-item-name {
   font-size: var(--text-body-size);
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* Combine and other action buttons */
