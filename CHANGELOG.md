@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/timdixon82/sophies-escape-witchs-castle/compare/v0.6.0...v0.6.1) (2026-07-23)
+
+
+### Bug Fixes
+
+* bump fast-uri and the js-yaml override to patch high-severity advisories ([#63](https://github.com/timdixon82/sophies-escape-witchs-castle/issues/63)) ([a5aaac5](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/a5aaac5439d8d9d21db93a3a4aca9f90a07537f5))
+
 ## [0.6.0](https://github.com/timdixon82/sophies-escape-witchs-castle/compare/v0.5.0...v0.6.0) (2026-07-14)
 
 
