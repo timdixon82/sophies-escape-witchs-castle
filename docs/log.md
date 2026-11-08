@@ -24,3 +24,7 @@ Commit afd102c (this dispatch): tests and rebuildCurrentRoom.
 Build: Vite build passes. ESLint: 0 errors. Tests: 28/28 pass.
 
 Branch notes: The brief specified fix/resize-observer-zero-dimension, but the prior Sean dispatch created feat/v0.2 as the v0.2 content branch. PR 8 is open on feat/v0.2. PR 7 (resize fix) is open on fix/resize-observer-zero-dimension. Both PRs target main.
+
+## [2026-11-08] build | Tool folders moved to ci-tools
+
+The lint-tools and accessibility-tools folders moved from .github to ci-tools at the repository root, so that Dependabot can open version-update pull requests for them. The dependabot.yml entries and the lint and accessibility workflows now use the new paths.
