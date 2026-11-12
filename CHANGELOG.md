@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2](https://github.com/timdixon82/sophies-escape-witchs-castle/compare/v0.6.1...v0.6.2) (2026-11-12)
+
+
+### Bug Fixes
+
+* **deps:** raise undici and js-yaml overrides to patched ranges ([#103](https://github.com/timdixon82/sophies-escape-witchs-castle/issues/103)) ([9cd079d](https://github.com/timdixon82/sophies-escape-witchs-castle/commit/9cd079de0b6b63579e6d1ef49671a0f235383ed0))
+
 ## [0.6.1](https://github.com/timdixon82/sophies-escape-witchs-castle/compare/v0.6.0...v0.6.1) (2026-07-23)
 
 
